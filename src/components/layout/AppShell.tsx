@@ -3,6 +3,7 @@
 import { ConnectionStatus } from '@/components/market/ConnectionStatus';
 import { useQuoteStore } from '@/stores/quote-store';
 import { useMarketPrice } from '@/hooks/useMarketPrice';
+import { useMarketStats, formatStats } from '@/hooks/useMarketStats';
 import { DEFAULT_MARKET } from '@/domain/market/constants';
 
 const NAV_LINKS = ['Discover', 'Portfolio', 'Wallet Tracker', 'Leaderboard', 'Watchlist', 'Referrals'];
@@ -12,6 +13,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setSelectedOutcome = useQuoteStore((s) => s.setSelectedOutcome);
   const yesPrice = useMarketPrice();
   const noPrice = yesPrice !== null ? 1 - yesPrice : null;
+  const stats = useMarketStats();
+  const s = formatStats(stats);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -27,7 +30,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
 
-          {/* Nav links */}
           <nav className="hidden lg:flex items-center gap-1">
             {NAV_LINKS.map((link) => (
               <button
@@ -50,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="ml-auto text-[10px] text-muted border border-border-light rounded px-1 py-0.5 font-mono">K</span>
           </div>
 
-          <ConnectionStatus />
+          {/* <ConnectionStatus /> */}
 
           {/* Sign In */}
           <button className="px-3 py-1 text-[13px] text-foreground bg-surface-2 border border-border-light rounded-md hover:bg-surface-3 transition-colors">
@@ -102,31 +104,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Divider */}
         <div className="w-px h-5 bg-border shrink-0" />
 
-        {/* Market stats */}
+        {/* Market stats — live from Polymarket + Kalshi */}
         <div className="hidden lg:flex items-center gap-5 text-[11px] font-mono shrink-0">
           <div className="flex flex-col items-center">
             <span className="text-muted text-[10px]">Expires</span>
-            <span className="text-muted-light">Nov 5, 2028</span>
+            <span className="text-muted-light">{s.expires}</span>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-muted text-[10px]">24h Change</span>
-            <span className="text-bid">+1.2¢</span>
+            <span className={s.change24hPositive ? 'text-bid' : 'text-ask'}>{s.change24h}</span>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-muted text-[10px]">24h Volume</span>
-            <span className="text-muted-light">37.8K</span>
+            <span className="text-muted-light">{s.volume24h}</span>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-muted text-[10px]">Total Volume</span>
-            <span className="text-muted-light">5.6M</span>
+            <span className="text-muted-light">{s.totalVolume}</span>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-muted text-[10px]">O.I.</span>
-            <span className="text-muted-light">8.7M</span>
+            <span className="text-muted-light">{s.openInterest}</span>
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-muted text-[10px]">Volatility</span>
-            <span className="text-muted-light">0.42%</span>
+            <span className="text-muted text-[10px]">Liquidity</span>
+            <span className="text-muted-light">{s.liquidity}</span>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useOrderBookStore } from '@/stores/orderbook-store';
 import { useQuoteStore } from '@/stores/quote-store';
-import { MergedPriceLevel, VenueId, asProbability, asDollars } from '@/domain/orderbook/types';
+import { MergedPriceLevel, asProbability, asDollars } from '@/domain/orderbook/types';
 import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
 
 const MAX_LEVELS = 12;
@@ -162,7 +162,6 @@ function flipLevels(levels: MergedPriceLevel[]): MergedPriceLevel[] {
 
 export function OrderBookPanel() {
   const mergedBook = useOrderBookStore((s) => s.mergedBook);
-  const venueBooks = useOrderBookStore((s) => s.venueBooks);
   const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
   const [tickSize, setTickSize] = useState(0.1);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -243,26 +242,16 @@ export function OrderBookPanel() {
     [askCumulatives, bidCumulatives]
   );
 
-  // Cumulative USD from the spread outward
-  const askCumUsd = useMemo(() => {
-    const cum: number[] = new Array(asks.length);
-    let total = 0;
-    for (let i = asks.length - 1; i >= 0; i--) {
-      total += asks[i].totalSize * asks[i].price;
-      cum[i] = total;
-    }
-    return cum;
-  }, [asks]);
+  // Per-level USD (shares × price) — matches Fireplace's "Total (USD)" column
+  const askLevelUsd = useMemo(() =>
+    asks.map((l) => l.totalSize * l.price),
+    [asks]
+  );
 
-  const bidCumUsd = useMemo(() => {
-    const cum: number[] = new Array(bids.length);
-    let total = 0;
-    for (let i = 0; i < bids.length; i++) {
-      total += bids[i].totalSize * bids[i].price;
-      cum[i] = total;
-    }
-    return cum;
-  }, [bids]);
+  const bidLevelUsd = useMemo(() =>
+    bids.map((l) => l.totalSize * l.price),
+    [bids]
+  );
 
   // B/S ratio uses the full (possibly flipped) book
   const bidTotal = useMemo(
@@ -275,14 +264,6 @@ export function OrderBookPanel() {
   );
   const bidPct = bidTotal + askTotal > 0 ? Math.round((bidTotal / (bidTotal + askTotal)) * 100) : 50;
 
-  // Which venues are currently active
-  const activeVenues = useMemo(() => {
-    const venues: VenueId[] = [];
-    if (venueBooks.polymarket) venues.push('polymarket');
-    if (venueBooks.kalshi) venues.push('kalshi');
-    return venues;
-  }, [venueBooks]);
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -291,17 +272,8 @@ export function OrderBookPanel() {
           Order Book <span className="text-muted">({isNo ? 'No' : 'Yes'})</span>
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Venue legend — compact */}
-          {activeVenues.map((v) => (
-            <span
-              key={v}
-              className="inline-block w-[6px] h-[6px] rounded-full"
-              style={{ background: VENUE_COLORS[v] }}
-              title={VENUE_LABELS[v]}
-            />
-          ))}
           {/* Tick size dropdown */}
-          <div className="relative ml-1" ref={dropdownRef}>
+          <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-1 px-2 py-0.5 bg-surface-2 border border-border rounded text-[11px] font-mono text-muted-light cursor-pointer hover:bg-surface-3 transition-colors"
@@ -363,7 +335,7 @@ export function OrderBookPanel() {
               <div ref={asksScrollRef} className="overflow-y-auto">
                 {asks.map((level, i) => {
                   const barWidth = maxCumulative > 0 ? Math.min(((askCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0;
-                  const cumUsd = askCumUsd[i] ?? 0;
+                  const levelUsd = askLevelUsd[i] ?? 0;
                   const rowKey = `a-${level.price}`;
                   const isHovered = hoveredRow === rowKey;
                   return (
@@ -380,7 +352,7 @@ export function OrderBookPanel() {
                           {level.totalSize.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <span className="text-right pr-3 text-muted-light">
-                          ${cumUsd.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                          ${levelUsd.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                         </span>
                       </div>
                       {isHovered && <VenueTooltip level={level} side="ask" />}
@@ -416,7 +388,7 @@ export function OrderBookPanel() {
             <div className="flex-1 overflow-y-auto">
               {bids.map((level, i) => {
                 const barWidth = maxCumulative > 0 ? Math.min(((bidCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0;
-                const cumUsd = bidCumUsd[i] ?? 0;
+                const levelUsd = bidLevelUsd[i] ?? 0;
                 const rowKey = `b-${level.price}`;
                 const isHovered = hoveredRow === rowKey;
                 return (
@@ -433,7 +405,7 @@ export function OrderBookPanel() {
                         {level.totalSize.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       <span className="text-right pr-3 text-muted-light">
-                        ${cumUsd.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        ${levelUsd.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                       </span>
                     </div>
                     {isHovered && <VenueTooltip level={level} side="bid" />}
