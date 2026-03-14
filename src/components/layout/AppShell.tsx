@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[15px]"></span>
             <span className="text-base font-semibold tracking-tight">
-              <span className="text-white font-bold">Galactic.pro</span>
+              <span className="font-bold bg-gradient-to-r from-[#e85d3a] to-[#f0a07c] bg-clip-text text-transparent">Galactic</span><span className="text-white font-bold">.pro</span>
               <span className="text-muted-light ml-0.5 text-xs font-normal"></span>
             </span>
           </div>
