@@ -23,6 +23,7 @@ type SymbolInfo = {
   has_weekly_and_monthly: boolean;
   supported_resolutions: string[];
   volume_precision: number;
+  has_no_volume: boolean;
   data_status: string;
   format: string;
 };
