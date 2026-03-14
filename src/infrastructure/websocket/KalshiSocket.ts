@@ -7,7 +7,6 @@ import {
   KalshiBookSnapshot,
 } from '@/domain/orderbook/normalizer';
 
-const KALSHI_BASE_URL = 'https://api.elections.kalshi.com/trade-api/v2';
 const POLL_INTERVAL_MS = 3000; // Poll every 3 seconds
 
 export interface KalshiSocketCallbacks {
@@ -61,7 +60,7 @@ export class KalshiSocket {
   private async fetchBook(): Promise<void> {
     try {
       const response = await fetch(
-        `${KALSHI_BASE_URL}/markets/${this.ticker}/orderbook`
+        `/api/kalshi-orderbook?ticker=${encodeURIComponent(this.ticker)}`
       );
 
       if (!response.ok) {

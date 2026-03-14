@@ -6,16 +6,14 @@ import {
   KalshiBookSnapshot,
 } from '@/domain/orderbook/normalizer';
 
-const KALSHI_BASE_URL = 'https://api.elections.kalshi.com/trade-api/v2';
-
 /**
  * Fetches the real Kalshi order book for a given market ticker.
- * Uses the public elections API (no auth required).
+ * Routes through our Next.js API proxy to avoid CORS issues in production.
  */
 export async function fetchKalshiBook(
   ticker: string
 ): Promise<NormalizedOrderBook> {
-  const response = await fetch(`${KALSHI_BASE_URL}/markets/${ticker}/orderbook`);
+  const response = await fetch(`/api/kalshi-orderbook?ticker=${encodeURIComponent(ticker)}`);
 
   if (!response.ok) {
     throw new Error(`Kalshi API error: ${response.status} ${response.statusText}`);
