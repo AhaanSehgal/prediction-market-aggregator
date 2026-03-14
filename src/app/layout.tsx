@@ -21,6 +21,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Prediction Market Aggregator",
   description: "Aggregated order book data from Polymarket and Kalshi",
+  icons: {
+    icon: "/galactic.png",
+  },
 };
 
 export default function RootLayout({

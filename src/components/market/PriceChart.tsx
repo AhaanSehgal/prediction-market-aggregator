@@ -114,7 +114,7 @@ export function PriceChart() {
         'paneProperties.legendProperties.showStudyValues': false,
         'paneProperties.legendProperties.showStudyArguments': false,
         'paneProperties.legendProperties.showBarChange': false,
-        'paneProperties.legendProperties.showVolume': false,
+        'paneProperties.legendProperties.showVolume': true,
       },
       studies_overrides: {
         'volume.volume.color.0': RED,
@@ -139,7 +139,6 @@ export function PriceChart() {
         'remove_library_container_border',
         'legend_context_menu',
         'main_series_scale_menu',
-        'create_volume_indicator_by_default',
         'chart_crosshair_menu',
       ],
       enabled_features: [
@@ -151,6 +150,7 @@ export function PriceChart() {
         'header_fullscreen_button',
         'hide_left_toolbar_by_default',
         'items_favoriting',
+        'create_volume_indicator_by_default',
       ],
       favorites: {
         intervals: ['1', '15', '60', '1D'],

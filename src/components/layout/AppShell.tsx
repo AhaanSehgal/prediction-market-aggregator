@@ -5,6 +5,7 @@ import { useQuoteStore } from '@/stores/quote-store';
 import { useMarketPrice } from '@/hooks/useMarketPrice';
 import { useMarketStats, formatStats } from '@/hooks/useMarketStats';
 import { DEFAULT_MARKET } from '@/domain/market/constants';
+import { LiveTitle } from './LiveTitle';
 
 const NAV_LINKS = ['Discover', 'Portfolio', 'Wallet Tracker', 'Leaderboard', 'Watchlist', 'Referrals'];
 
@@ -18,6 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
+      <LiveTitle />
       {/* Primary nav bar */}
       <header className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-6">
