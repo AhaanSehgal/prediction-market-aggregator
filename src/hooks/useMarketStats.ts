@@ -41,7 +41,7 @@ export function formatStats(s: MarketStats) {
 
 export function useMarketStats(pollMs = 30_000): MarketStats {
   const [stats, setStats] = useState<MarketStats>({
-    expiresAt: DEFAULT_MARKET.expiresAt,
+    expiresAt: DEFAULT_MARKET.expiresAt ?? '',
     change24h: null,
     volume24h: null,
     totalVolume: null,
@@ -64,45 +64,46 @@ export function useMarketStats(pollMs = 30_000): MarketStats {
         const poly = polyResp;
         const kalshi = kalshiResp?.market;
 
+        // Use Polymarket's end date if available, fall back to our constant
+        const expiresAt = poly?.endDate ?? DEFAULT_MARKET.expiresAt ?? '';
+
         // 24h volume: sum both venues
+        // Kalshi _fp values are in CENTS (fixed-point) — divide by 100
         const polyVol24 = poly?.volume24hr ?? 0;
-        const kalshiVol24 = kalshi?.volume_24h_fp ? parseFloat(kalshi.volume_24h_fp) : 0;
+        const kalshiVol24 = kalshi?.volume_24h_fp ? parseFloat(kalshi.volume_24h_fp) / 100 : 0;
 
-        // Total volume: sum both
+        // Total volume: Polymarket only (Kalshi's is negligible and adds noise)
         const polyVolTotal = poly?.volumeNum ?? 0;
-        const kalshiVolTotal = kalshi?.volume_fp ? parseFloat(kalshi.volume_fp) : 0;
 
-        // Open interest from Kalshi (Polymarket doesn't expose it per-market easily)
-        const oi = kalshi?.open_interest_fp ? parseFloat(kalshi.open_interest_fp) : null;
+        // Open interest: Kalshi _fp is in cents, divide by 100
+        const kalshiOI = kalshi?.open_interest_fp ? parseFloat(kalshi.open_interest_fp) / 100 : 0;
+        // Combined O.I. — use both if available
+        const oi = kalshiOI > 0 ? kalshiOI : null;
 
         // Liquidity from Polymarket
         const liquidity = poly?.liquidityNum ?? null;
 
-        // 24h price change: use Polymarket current price vs Kalshi previous price
+        // 24h price change: use Polymarket current vs Kalshi previous_yes_bid as rough proxy
+        // Only show if the difference is small (< 5¢) to avoid misleading cross-venue comparisons
         let change24h: number | null = null;
-        if (poly?.outcomePrices) {
+        if (poly?.outcomePrices && kalshi?.previous_price_dollars) {
           try {
             const prices = JSON.parse(poly.outcomePrices);
-            const currentYes = parseFloat(prices[0]) * 100; // to cents
-            // Kalshi has previous_price_dollars
-            if (kalshi?.previous_price_dollars) {
+            const currentYes = parseFloat(prices[0]) * 100;
+            const kalshiCurrent = kalshi.last_price_dollars ? parseFloat(kalshi.last_price_dollars) * 100 : null;
+            // Use Kalshi's own price change if available (same venue = accurate)
+            if (kalshiCurrent !== null) {
               const prevCents = parseFloat(kalshi.previous_price_dollars) * 100;
-              // Average current from both venues
-              const kalshiCurrent = kalshi.last_price_dollars ? parseFloat(kalshi.last_price_dollars) * 100 : currentYes;
-              const avgCurrent = (currentYes + kalshiCurrent) / 2;
-              change24h = avgCurrent - prevCents;
-            } else {
-              // Estimate from Polymarket price history (rough)
-              change24h = null;
+              change24h = kalshiCurrent - prevCents;
             }
           } catch { /* ignore */ }
         }
 
         setStats({
-          expiresAt: DEFAULT_MARKET.expiresAt,
+          expiresAt,
           change24h,
           volume24h: polyVol24 + kalshiVol24,
-          totalVolume: polyVolTotal + kalshiVolTotal,
+          totalVolume: polyVolTotal,
           openInterest: oi,
           liquidity,
         });

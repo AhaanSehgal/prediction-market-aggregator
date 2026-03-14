@@ -63,12 +63,13 @@ export function normalizeKalshiBook(
   raw: KalshiBookSnapshot,
   timestamp?: number
 ): NormalizedOrderBook {
-  // yes_dollars = YES bids: price is the probability directly
-  // Quantity is in dollars → shares = dollars / yes_price
+  // yes_dollars = YES bids: [price_in_dollars, quantity_in_cents]
+  // _fp quantities are in cents → divide by 100 to get real dollars
+  // Then shares = dollars / yes_price
   const bids: NormalizedPriceLevel[] = (raw.yes_dollars || [])
-    .map(([priceStr, dollarStr]) => {
+    .map(([priceStr, centStr]) => {
       const price = parseFloat(priceStr);
-      const dollars = parseFloat(dollarStr);
+      const dollars = parseFloat(centStr) / 100;
       return {
         price: asProbability(price),
         size: asDollars(price > 0 ? dollars / price : 0),
@@ -79,11 +80,12 @@ export function normalizeKalshiBook(
     .sort((a, b) => b.price - a.price);
 
   // no_dollars = NO bids → YES asks at (1 - no_price)
-  // Quantity is in dollars → shares = dollars / no_price
+  // _fp quantities are in cents → divide by 100 to get real dollars
+  // Then shares = dollars / no_price
   const asks: NormalizedPriceLevel[] = (raw.no_dollars || [])
-    .map(([priceStr, dollarStr]) => {
+    .map(([priceStr, centStr]) => {
       const noPrice = parseFloat(priceStr);
-      const dollars = parseFloat(dollarStr);
+      const dollars = parseFloat(centStr) / 100;
       return {
         price: asProbability(1 - noPrice),
         size: asDollars(noPrice > 0 ? dollars / noPrice : 0),

@@ -13,45 +13,41 @@ import {
 } from './types';
 
 /**
- * Calculates a quote by walking the order book for a given dollar amount.
+ * Calculates a quote by walking the order book.
  *
- * For a BUY: walks the asks (lowest first), buying shares at each level.
+ * For a BUY: `amount` is dollars to spend. Walks asks (lowest first), buying shares.
  *   - At price P, spending D dollars buys D/P shares.
  *
- * For a SELL: walks the bids (highest first), selling shares at each level.
+ * For a SELL: `amount` is shares to sell. Walks bids (highest first), selling shares.
  *   - At price P, selling S shares yields S*P dollars.
  *
  * Pure function — no side effects.
  */
 export function calculateQuote(
   orderBook: MergedOrderBook,
-  dollarAmount: number,
+  amount: number,
   side: QuoteSide
 ): QuoteResult {
-  if (dollarAmount <= 0) {
-    return emptyQuote(side, asDollars(dollarAmount));
+  if (amount <= 0) {
+    return emptyQuote(side, asDollars(amount));
   }
 
   const levels: MergedPriceLevel[] =
     side === 'buy' ? orderBook.asks : orderBook.bids;
 
   const fills: FillAtLevel[] = [];
-  let remaining = dollarAmount;
+  let remaining = amount;
   let totalShares = 0;
   let totalCost = 0;
 
   for (const level of levels) {
     if (remaining <= 0) break;
 
-    // Process each venue's liquidity at this price level
     for (const venueContrib of level.venues) {
       if (remaining <= 0) break;
 
       if (side === 'buy') {
         // Buying: spend dollars to get shares
-        // At price P, each share costs P dollars
-        // Available dollar value at this level = size * price
-        // But size is in shares available, cost = size * price
         const maxCostAtLevel = venueContrib.size * level.price;
         const costAtLevel = Math.min(remaining, maxCostAtLevel);
         const sharesAtLevel = costAtLevel / level.price;
@@ -67,13 +63,10 @@ export function calculateQuote(
         totalShares += sharesAtLevel;
         totalCost += costAtLevel;
       } else {
-        // Selling: sell shares to get dollars
-        // At price P, each share returns P dollars
-        // We want to receive `remaining` dollars total
-        // Shares needed = remaining / price
-        const maxDollarsAtLevel = venueContrib.size * level.price;
-        const dollarsAtLevel = Math.min(remaining, maxDollarsAtLevel);
-        const sharesAtLevel = dollarsAtLevel / level.price;
+        // Selling: amount is shares to sell
+        // Available shares at this level from this venue
+        const sharesAtLevel = Math.min(remaining, venueContrib.size);
+        const dollarsAtLevel = sharesAtLevel * level.price;
 
         fills.push({
           price: level.price,
@@ -82,7 +75,7 @@ export function calculateQuote(
           venue: venueContrib.venue,
         });
 
-        remaining -= dollarsAtLevel;
+        remaining -= sharesAtLevel;
         totalShares += sharesAtLevel;
         totalCost += dollarsAtLevel;
       }
@@ -118,7 +111,7 @@ export function calculateQuote(
 
   return {
     side,
-    requestedAmount: asDollars(dollarAmount),
+    requestedAmount: asDollars(amount),
     totalShares: asDollars(totalShares),
     totalCost: asDollars(totalCost),
     averagePrice,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useOrderBookStore } from '@/stores/orderbook-store';
 import { useQuoteStore } from '@/stores/quote-store';
 import { MergedPriceLevel, asProbability, asDollars } from '@/domain/orderbook/types';
@@ -8,6 +9,14 @@ import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
 
 const MAX_LEVELS = 12;
 const TICK_OPTIONS = [0.1, 0.2, 0.5, 1, 2];
+
+/** Compact format for large numbers: 1,234 → 1,234 | 12,345 → 12.3K | 1,234,567 → 1.23M */
+function fmtCompact(n: number, prefix = ''): string {
+  if (n >= 1_000_000) return `${prefix}${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 100_000) return `${prefix}${(n / 1_000).toFixed(1)}K`;
+  if (n >= 10_000) return `${prefix}${(n / 1_000).toFixed(2)}K`;
+  return `${prefix}${n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+}
 
 function groupByTick(levels: MergedPriceLevel[], tickCents: number, side: 'bid' | 'ask'): MergedPriceLevel[] {
   if (tickCents <= 0.1) return levels;
@@ -99,10 +108,29 @@ function DepthBar({
 }
 
 
-/** Venue breakdown tooltip shown on hover */
-function VenueTooltip({ level, side }: { level: MergedPriceLevel; side: 'bid' | 'ask' }) {
-  return (
-    <div className="absolute left-1 bottom-full mb-1 z-50 bg-surface-3 border border-border-light rounded-md px-2.5 py-2 shadow-lg pointer-events-none whitespace-nowrap">
+/** Venue breakdown tooltip shown on hover — uses fixed positioning to escape overflow containers */
+function VenueTooltip({ level, side, anchorRef }: { level: MergedPriceLevel; side: 'bid' | 'ask'; anchorRef: React.RefObject<HTMLDivElement | null> }) {
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setPos({
+      left: rect.left + 4,
+      top: side === 'ask' ? rect.bottom + 4 : rect.top - 4,
+    });
+  }, [anchorRef, side]);
+
+  if (!pos) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      className="fixed z-[9999] bg-surface-3 border border-border-light rounded-md px-2.5 py-2 shadow-lg pointer-events-none whitespace-nowrap"
+      style={{
+        left: pos.left,
+        ...(side === 'ask' ? { top: pos.top } : { bottom: window.innerHeight - pos.top }),
+      }}
+    >
       <div className="text-[10px] font-mono text-muted-light mb-1.5 font-medium">
         {(level.price * 100).toFixed(1)}¢ — {side === 'bid' ? 'Buy' : 'Sell'} Side
       </div>
@@ -127,7 +155,6 @@ function VenueTooltip({ level, side }: { level: MergedPriceLevel; side: 'bid' | 
               {level.totalSize.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} shares
             </span>
           </div>
-          {/* Visual split bar in tooltip */}
           <div className="flex h-[4px] w-full rounded-full overflow-hidden mt-1.5">
             {level.venues.map((v) => (
               <div
@@ -147,6 +174,51 @@ function VenueTooltip({ level, side }: { level: MergedPriceLevel; side: 'bid' | 
           </div>
         </>
       )}
+    </div>,
+    document.body
+  );
+}
+
+/** Single order book row with tooltip support */
+function OrderRow({
+  level,
+  side,
+  barWidth,
+  cumUsd,
+  hoveredRow,
+  setHoveredRow,
+}: {
+  level: MergedPriceLevel;
+  side: 'bid' | 'ask';
+  barWidth: number;
+  cumUsd: number;
+  hoveredRow: string | null;
+  setHoveredRow: (key: string | null) => void;
+}) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const rowKey = `${side === 'bid' ? 'b' : 'a'}-${level.price}`;
+  const isHovered = hoveredRow === rowKey;
+  const priceColor = side === 'bid' ? 'text-bid' : 'text-ask';
+
+  return (
+    <div
+      ref={rowRef}
+      key={rowKey}
+      className="relative h-[22px] flex items-center text-[11px] font-mono cursor-default hover:bg-white/[0.03]"
+      onMouseEnter={() => setHoveredRow(rowKey)}
+      onMouseLeave={() => setHoveredRow(null)}
+    >
+      <DepthBar level={level} barWidthPct={barWidth} side={side} />
+      <div className="relative z-10 grid w-full items-center tabular-nums" style={{ gridTemplateColumns: '52px 1fr 80px' }}>
+        <span className={`pl-3 ${priceColor}`}>{(level.price * 100).toFixed(1)}¢</span>
+        <span className="text-right text-foreground">
+          {fmtCompact(level.totalSize)}
+        </span>
+        <span className="text-right pr-3 text-muted-light">
+          {fmtCompact(cumUsd, '$')}
+        </span>
+      </div>
+      {isHovered && <VenueTooltip level={level} side={side} anchorRef={rowRef} />}
     </div>
   );
 }
@@ -201,10 +273,21 @@ export function OrderBookPanel() {
     return mergedBook.bids;
   }, [mergedBook.bids, mergedBook.asks, isNo]);
 
-  const asks = useMemo(
-    () => groupByTick(rawAsks, tickSize, 'ask').slice(0, MAX_LEVELS).reverse(),
-    [rawAsks, tickSize]
-  );
+  // Filter out crossed levels: find the true uncrossed spread first
+  const bestBid = rawBids.length > 0 ? rawBids[0].price : 0;
+  // Best ask must be ABOVE best bid (skip crossed asks)
+  const bestAsk = useMemo(() => {
+    for (const l of rawAsks) {
+      if (l.price > bestBid) return l.price;
+    }
+    return 1;
+  }, [rawAsks, bestBid]);
+
+  const asks = useMemo(() => {
+    const filtered = rawAsks.filter((l) => l.price >= bestAsk);
+    return groupByTick(filtered, tickSize, 'ask').slice(0, MAX_LEVELS).reverse();
+  }, [rawAsks, tickSize, bestAsk]);
+
   const bids = useMemo(
     () => groupByTick(rawBids, tickSize, 'bid').slice(0, MAX_LEVELS),
     [rawBids, tickSize]
@@ -242,27 +325,45 @@ export function OrderBookPanel() {
     [askCumulatives, bidCumulatives]
   );
 
-  // Per-level USD (shares × price) — matches Fireplace's "Total (USD)" column
-  const askLevelUsd = useMemo(() =>
-    asks.map((l) => l.totalSize * l.price),
-    [asks]
-  );
+  // Cumulative USD from the spread outward — matches Fireplace
+  const askCumUsd = useMemo(() => {
+    const cum: number[] = new Array(asks.length);
+    let total = 0;
+    for (let i = asks.length - 1; i >= 0; i--) {
+      total += asks[i].totalSize * asks[i].price;
+      cum[i] = total;
+    }
+    return cum;
+  }, [asks]);
 
-  const bidLevelUsd = useMemo(() =>
-    bids.map((l) => l.totalSize * l.price),
-    [bids]
-  );
+  const bidCumUsd = useMemo(() => {
+    const cum: number[] = new Array(bids.length);
+    let total = 0;
+    for (let i = 0; i < bids.length; i++) {
+      total += bids[i].totalSize * bids[i].price;
+      cum[i] = total;
+    }
+    return cum;
+  }, [bids]);
 
-  // B/S ratio uses the full (possibly flipped) book
+  // B/S ratio uses filtered book (excluding crossed levels), weighted by USD value
+  const filteredAsks = useMemo(
+    () => rawAsks.filter((l) => l.price >= bestAsk),
+    [rawAsks, bestAsk]
+  );
   const bidTotal = useMemo(
     () => rawBids.reduce((sum, l) => sum + l.totalSize, 0),
     [rawBids]
   );
   const askTotal = useMemo(
-    () => rawAsks.reduce((sum, l) => sum + l.totalSize, 0),
-    [rawAsks]
+    () => filteredAsks.reduce((sum, l) => sum + l.totalSize, 0),
+    [filteredAsks]
   );
   const bidPct = bidTotal + askTotal > 0 ? Math.round((bidTotal / (bidTotal + askTotal)) * 100) : 50;
+
+  // Spread from uncrossed best bid/ask
+  const spreadValue = bestAsk - bestBid;
+  const midpoint = (bestAsk + bestBid) / 2;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -315,7 +416,7 @@ export function OrderBookPanel() {
       {/* Column headers */}
       <div
         className="grid px-3 py-1 items-center text-[10px] font-mono text-muted border-b border-border shrink-0"
-        style={{ gridTemplateColumns: '52px 1fr 72px' }}
+        style={{ gridTemplateColumns: '52px 1fr 80px' }}
       >
         <span>Price (¢)</span>
         <span className="text-right">Shares</span>
@@ -333,32 +434,17 @@ export function OrderBookPanel() {
             {/* Asks */}
             <div className="flex-1 flex flex-col justify-end overflow-hidden">
               <div ref={asksScrollRef} className="overflow-y-auto">
-                {asks.map((level, i) => {
-                  const barWidth = maxCumulative > 0 ? Math.min(((askCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0;
-                  const levelUsd = askLevelUsd[i] ?? 0;
-                  const rowKey = `a-${level.price}`;
-                  const isHovered = hoveredRow === rowKey;
-                  return (
-                    <div
-                      key={rowKey}
-                      className="relative h-[22px] flex items-center text-[11px] font-mono cursor-default hover:bg-white/[0.03]"
-                      onMouseEnter={() => setHoveredRow(rowKey)}
-                      onMouseLeave={() => setHoveredRow(null)}
-                    >
-                      <DepthBar level={level} barWidthPct={barWidth} side="ask" />
-                      <div className="relative z-10 grid w-full items-center tabular-nums" style={{ gridTemplateColumns: '52px 1fr 72px' }}>
-                        <span className="pl-3 text-ask">{(level.price * 100).toFixed(1)}¢</span>
-                        <span className="text-right text-foreground">
-                          {level.totalSize.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        <span className="text-right pr-3 text-muted-light">
-                          ${levelUsd.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                        </span>
-                      </div>
-                      {isHovered && <VenueTooltip level={level} side="ask" />}
-                    </div>
-                  );
-                })}
+                {asks.map((level, i) => (
+                  <OrderRow
+                    key={`a-${level.price}`}
+                    level={level}
+                    side="ask"
+                    barWidth={maxCumulative > 0 ? Math.min(((askCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0}
+                    cumUsd={askCumUsd[i] ?? 0}
+                    hoveredRow={hoveredRow}
+                    setHoveredRow={setHoveredRow}
+                  />
+                ))}
               </div>
             </div>
 
@@ -366,52 +452,34 @@ export function OrderBookPanel() {
             <div className="flex items-center justify-between px-3 h-6 border-y border-border bg-surface-2 shrink-0">
               <span className="text-[11px] font-mono text-muted">Spread</span>
               <div className="flex items-center gap-2 text-[11px] font-mono">
-                {mergedBook.spread !== null && (() => {
-                  const midpoint = isNo && mergedBook.midpoint !== null ? 1 - mergedBook.midpoint : mergedBook.midpoint;
-                  return (
-                    <>
-                      <span className="text-muted-light">
-                        {Math.abs(mergedBook.spread * 100).toFixed(1)}¢
+                {bestBid > 0 && bestAsk < 1 && (
+                  <>
+                    <span className="text-muted-light">
+                      {(spreadValue * 100).toFixed(1)}¢
+                    </span>
+                    {midpoint > 0 && (
+                      <span className="text-muted">
+                        {((spreadValue / midpoint) * 100).toFixed(3)}%
                       </span>
-                      {midpoint !== null && (
-                        <span className="text-muted">
-                          {Math.abs((mergedBook.spread / midpoint) * 100).toFixed(3)}%
-                        </span>
-                      )}
-                    </>
-                  );
-                })()}
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
             {/* Bids */}
             <div className="flex-1 overflow-y-auto">
-              {bids.map((level, i) => {
-                const barWidth = maxCumulative > 0 ? Math.min(((bidCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0;
-                const levelUsd = bidLevelUsd[i] ?? 0;
-                const rowKey = `b-${level.price}`;
-                const isHovered = hoveredRow === rowKey;
-                return (
-                  <div
-                    key={rowKey}
-                    className="relative h-[22px] flex items-center text-[11px] font-mono cursor-default hover:bg-white/[0.03]"
-                    onMouseEnter={() => setHoveredRow(rowKey)}
-                    onMouseLeave={() => setHoveredRow(null)}
-                  >
-                    <DepthBar level={level} barWidthPct={barWidth} side="bid" />
-                    <div className="relative z-10 grid w-full items-center tabular-nums" style={{ gridTemplateColumns: '52px 1fr 72px' }}>
-                      <span className="pl-3 text-bid">{(level.price * 100).toFixed(1)}¢</span>
-                      <span className="text-right text-foreground">
-                        {level.totalSize.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                      <span className="text-right pr-3 text-muted-light">
-                        ${levelUsd.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                      </span>
-                    </div>
-                    {isHovered && <VenueTooltip level={level} side="bid" />}
-                  </div>
-                );
-              })}
+              {bids.map((level, i) => (
+                <OrderRow
+                  key={`b-${level.price}`}
+                  level={level}
+                  side="bid"
+                  barWidth={maxCumulative > 0 ? Math.min(((bidCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0}
+                  cumUsd={bidCumUsd[i] ?? 0}
+                  hoveredRow={hoveredRow}
+                  setHoveredRow={setHoveredRow}
+                />
+              ))}
             </div>
           </>
         )}

@@ -23,10 +23,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-6">
           {/* Logo */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[15px]">🔥</span>
+            <span className="text-[15px]"></span>
             <span className="text-sm font-semibold tracking-tight">
-              <span className="text-foreground">PM</span>
-              <span className="text-muted-light ml-0.5 text-xs font-normal">AGG</span>
+              <span className="text-white font-bold">Galactic.pro</span>
+              <span className="text-muted-light ml-0.5 text-xs font-normal"></span>
             </span>
           </div>
 
@@ -122,11 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-muted text-[10px]">Total Volume</span>
             <span className="text-muted-light">{s.totalVolume}</span>
           </div>
-          <div className="flex flex-col items-center">
-            <span className="text-muted text-[10px]">O.I.</span>
-            <span className="text-muted-light">{s.openInterest}</span>
-          </div>
-          <div className="flex flex-col items-center">
+<div className="flex flex-col items-center">
             <span className="text-muted text-[10px]">Liquidity</span>
             <span className="text-muted-light">{s.liquidity}</span>
           </div>
