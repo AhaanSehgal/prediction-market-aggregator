@@ -10,20 +10,19 @@ export const DEFAULT_MARKET: Market = {
   description: 'This market resolves to "Yes" if JD Vance wins the 2028 United States Presidential Election.',
   category: 'Politics',
   outcomes: [
-    { id: 'yes', label: 'Yes', lastPrice: asProbability(0.35) },
-    { id: 'no', label: 'No', lastPrice: asProbability(0.65) },
+    { id: 'yes', label: 'Yes', lastPrice: asProbability(0.20) },
+    { id: 'no', label: 'No', lastPrice: asProbability(0.80) },
   ],
   venueInfo: [
     {
       venue: 'polymarket',
       marketId: 'jd-vance-wins-2028',
-      // This token ID will need to be updated with the real one from Polymarket
-      tokenId: '21742633143463906290569050155826241533067272736897614950488156847949938836455',
+      tokenId: '16040015440196279900485035793550429453516625694844857319147506590755961451627',
     },
     {
       venue: 'kalshi',
-      marketId: 'PRES-2028-JDV',
-      ticker: 'PRES-2028-JDV',
+      marketId: 'KXPRESPERSON-28-JVAN',
+      ticker: 'KXPRESPERSON-28-JVAN',
     },
   ],
   expiresAt: '2028-11-05T00:00:00Z',

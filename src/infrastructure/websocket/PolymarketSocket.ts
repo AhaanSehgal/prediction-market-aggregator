@@ -39,7 +39,7 @@ export class PolymarketSocket {
           this.subscribe();
         }
       },
-      heartbeatIntervalMs: 20_000, // Polymarket can be slow between updates
+      heartbeatIntervalMs: 60_000, // Polymarket can be slow between updates; REST polls fill gaps
     });
   }
 

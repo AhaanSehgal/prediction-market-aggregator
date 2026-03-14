@@ -1,15 +1,16 @@
 'use client';
 
 import { ConnectionStatus } from '@/components/market/ConnectionStatus';
-import { useOrderBookStore } from '@/stores/orderbook-store';
+import { useQuoteStore } from '@/stores/quote-store';
+import { useMarketPrice } from '@/hooks/useMarketPrice';
 import { DEFAULT_MARKET } from '@/domain/market/constants';
-import { formatCents } from '@/lib/utils';
 
 const NAV_LINKS = ['Discover', 'Portfolio', 'Wallet Tracker', 'Leaderboard', 'Watchlist', 'Referrals'];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const mergedBook = useOrderBookStore((s) => s.mergedBook);
-  const yesPrice = mergedBook.midpoint;
+  const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
+  const setSelectedOutcome = useQuoteStore((s) => s.setSelectedOutcome);
+  const yesPrice = useMarketPrice();
   const noPrice = yesPrice !== null ? 1 - yesPrice : null;
 
   return (
@@ -72,15 +73,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </div>
 
-        {/* YES/NO pills */}
+        {/* YES/NO pills — clickable, toggles selected outcome */}
         {yesPrice !== null && noPrice !== null && (
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="inline-flex items-center px-3 py-1 text-[12px] font-mono font-semibold bg-bid/10 text-bid border border-bid/25 rounded">
-              YES {formatCents(yesPrice)}
-            </span>
-            <span className="inline-flex items-center px-3 py-1 text-[12px] font-mono font-semibold bg-ask/10 text-ask border border-ask/25 rounded">
-              NO {formatCents(noPrice)}
-            </span>
+            <button
+              onClick={() => setSelectedOutcome('yes')}
+              className={`inline-flex items-center px-3 py-1 text-[12px] font-mono font-semibold rounded transition-all ${
+                selectedOutcome === 'yes'
+                  ? 'bg-bid text-white shadow-sm'
+                  : 'bg-bid/10 text-bid border border-bid/25 hover:bg-bid/20'
+              }`}
+            >
+              YES {(yesPrice * 100).toFixed(1)}¢
+            </button>
+            <button
+              onClick={() => setSelectedOutcome('no')}
+              className={`inline-flex items-center px-3 py-1 text-[12px] font-mono font-semibold rounded transition-all ${
+                selectedOutcome === 'no'
+                  ? 'bg-ask text-white shadow-sm'
+                  : 'bg-ask/10 text-ask border border-ask/25 hover:bg-ask/20'
+              }`}
+            >
+              NO {(noPrice * 100).toFixed(1)}¢
+            </button>
           </div>
         )}
 

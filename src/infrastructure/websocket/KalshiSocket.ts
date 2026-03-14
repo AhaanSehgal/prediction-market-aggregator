@@ -1,10 +1,14 @@
 import {
   NormalizedOrderBook,
-  NormalizedPriceLevel,
   ConnectionState,
-  asProbability,
-  asDollars,
 } from '@/domain/orderbook/types';
+import {
+  normalizeKalshiBook,
+  KalshiBookSnapshot,
+} from '@/domain/orderbook/normalizer';
+
+const KALSHI_BASE_URL = 'https://api.elections.kalshi.com/trade-api/v2';
+const POLL_INTERVAL_MS = 3000; // Poll every 3 seconds
 
 export interface KalshiSocketCallbacks {
   onBookUpdate: (book: NormalizedOrderBook) => void;
@@ -12,24 +16,18 @@ export interface KalshiSocketCallbacks {
 }
 
 /**
- * Mock Kalshi WebSocket that simulates realistic order book data.
+ * Kalshi "socket" that polls the public REST API for order book updates.
  *
- * Kalshi's real WebSocket requires authentication and has rate limits
- * that make it impractical for a take-home demo. This mock:
- * - Generates realistic order book data centered around a configurable midpoint
- * - Simulates price drift with a random walk
- * - Simulates connection drops and reconnections
- * - Implements the same interface a real KalshiSocket would use
- *
- * To swap for real data: implement the same KalshiSocketCallbacks interface
- * using WebSocketManager with wss://api.elections.kalshi.com/trade-api/ws/v2
+ * Kalshi's WebSocket requires authentication, so we poll the public
+ * elections API instead. This provides near-real-time updates every 3s.
+ * Implements the same interface as a real WebSocket would for easy swapping.
  */
 export class KalshiSocket {
   private callbacks: KalshiSocketCallbacks;
   private ticker: string;
-  private updateInterval: ReturnType<typeof setInterval> | null = null;
-  private midpoint = 0.35; // Starting midpoint for JD Vance market
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
   private connected = false;
+  private consecutiveErrors = 0;
 
   constructor(ticker: string, callbacks: KalshiSocketCallbacks) {
     this.ticker = ticker;
@@ -38,129 +36,56 @@ export class KalshiSocket {
 
   connect(): void {
     this.callbacks.onStateChange({ status: 'connecting' });
+    this.connected = true;
 
-    // Simulate connection delay
-    setTimeout(() => {
-      this.connected = true;
-      this.callbacks.onStateChange({ status: 'connected', since: Date.now() });
+    // Initial fetch
+    this.fetchBook();
 
-      // Send initial snapshot
-      this.emitBook();
-
-      // Send updates every 2-5 seconds
-      this.updateInterval = setInterval(() => {
-        this.driftMidpoint();
-        this.emitBook();
-      }, 2000 + Math.random() * 3000);
-
-      // Simulate occasional connection drops
-      this.scheduleRandomDrop();
-    }, 500 + Math.random() * 500);
+    // Start polling
+    this.pollInterval = setInterval(() => {
+      if (this.connected) {
+        this.fetchBook();
+      }
+    }, POLL_INTERVAL_MS);
   }
 
   disconnect(): void {
     this.connected = false;
-    this.stopUpdates();
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
     this.callbacks.onStateChange({ status: 'disconnected', reason: 'Manual disconnect' });
   }
 
-  private stopUpdates(): void {
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-      this.updateInterval = null;
-    }
-  }
+  private async fetchBook(): Promise<void> {
+    try {
+      const response = await fetch(
+        `${KALSHI_BASE_URL}/markets/${this.ticker}/orderbook`
+      );
 
-  private driftMidpoint(): void {
-    // Random walk: ±0.5-2% per update
-    const drift = (Math.random() - 0.5) * 0.02;
-    this.midpoint = Math.max(0.05, Math.min(0.95, this.midpoint + drift));
-  }
-
-  private emitBook(): void {
-    if (!this.connected) return;
-
-    const book = this.generateBook();
-    this.callbacks.onBookUpdate(book);
-  }
-
-  private generateBook(): NormalizedOrderBook {
-    const bids: NormalizedPriceLevel[] = [];
-    const asks: NormalizedPriceLevel[] = [];
-
-    // Generate 8-15 levels on each side
-    const numLevels = 8 + Math.floor(Math.random() * 8);
-    const spread = 0.01 + Math.random() * 0.02; // 1-3% spread
-
-    const bestBid = this.midpoint - spread / 2;
-    const bestAsk = this.midpoint + spread / 2;
-
-    for (let i = 0; i < numLevels; i++) {
-      // Kalshi prices are in cents, round to nearest cent
-      const bidPrice = Math.round((bestBid - i * 0.01) * 100) / 100;
-      const askPrice = Math.round((bestAsk + i * 0.01) * 100) / 100;
-
-      if (bidPrice > 0 && bidPrice < 1) {
-        // Liquidity tends to be larger near the top of book
-        const sizeFactor = Math.max(0.5, 1 - i * 0.08);
-        const baseSize = 50 + Math.random() * 200;
-        bids.push({
-          price: asProbability(bidPrice),
-          size: asDollars(Math.round(baseSize * sizeFactor)),
-          venue: 'kalshi',
-        });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      if (askPrice > 0 && askPrice < 1) {
-        const sizeFactor = Math.max(0.5, 1 - i * 0.08);
-        const baseSize = 50 + Math.random() * 200;
-        asks.push({
-          price: asProbability(askPrice),
-          size: asDollars(Math.round(baseSize * sizeFactor)),
-          venue: 'kalshi',
-        });
-      }
-    }
+      const data = await response.json();
+      const raw: KalshiBookSnapshot = data.orderbook_fp || data.orderbook || data;
+      const normalized = normalizeKalshiBook(raw);
 
-    return {
-      bids: bids.sort((a, b) => b.price - a.price),
-      asks: asks.sort((a, b) => a.price - b.price),
-      timestamp: Date.now(),
-      venue: 'kalshi',
-    };
-  }
+      this.consecutiveErrors = 0;
+      this.callbacks.onStateChange({ status: 'connected', since: Date.now() });
+      this.callbacks.onBookUpdate(normalized);
+    } catch (err) {
+      this.consecutiveErrors++;
+      console.warn(`Kalshi fetch error (${this.consecutiveErrors}):`, err);
 
-  private scheduleRandomDrop(): void {
-    // 5% chance of a brief disconnect every 30-60s
-    const checkInterval = setTimeout(() => {
-      if (!this.connected) return;
-
-      if (Math.random() < 0.05) {
-        this.stopUpdates();
+      if (this.consecutiveErrors >= 3) {
         this.callbacks.onStateChange({
           status: 'error',
-          error: 'Simulated connection drop',
-          retryIn: 3000,
+          error: `Failed to fetch Kalshi data: ${err}`,
+          retryIn: POLL_INTERVAL_MS,
         });
-
-        setTimeout(() => {
-          if (this.connected) {
-            this.callbacks.onStateChange({ status: 'connected', since: Date.now() });
-            this.emitBook();
-            this.updateInterval = setInterval(() => {
-              this.driftMidpoint();
-              this.emitBook();
-            }, 2000 + Math.random() * 3000);
-          }
-        }, 2000 + Math.random() * 2000);
       }
-
-      this.scheduleRandomDrop();
-    }, 30_000 + Math.random() * 30_000);
-
-    // Clean up if disconnected
-    if (!this.connected) {
-      clearTimeout(checkInterval);
     }
   }
 }

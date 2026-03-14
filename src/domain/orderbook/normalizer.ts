@@ -18,15 +18,10 @@ export interface PolymarketBookSnapshot {
 }
 
 // ─── Raw Kalshi types ───────────────────────────────────────────
-interface KalshiBookEntry {
-  price: number;  // cents (1-99)
-  quantity: number;
-}
-
+// Kalshi API returns [price_string, quantity_string] tuples in dollars (0.01-0.99)
 export interface KalshiBookSnapshot {
-  yes: KalshiBookEntry[];
-  no: KalshiBookEntry[];
-  timestamp?: string;
+  yes_dollars: [string, string][];
+  no_dollars: [string, string][];
 }
 
 // ─── Polymarket Normalizer ──────────────────────────────────────
@@ -62,31 +57,40 @@ export function normalizePolymarketBook(
 }
 
 // ─── Kalshi Normalizer ──────────────────────────────────────────
-// Kalshi prices are in cents (1–99). We normalize to 0–1.
-// Kalshi quantities are number of contracts; each contract is $1 notional.
+// Kalshi `orderbook_fp` returns dollar amounts, not contract counts.
+// Convert dollars → shares: shares = dollars / price_per_contract.
 export function normalizeKalshiBook(
   raw: KalshiBookSnapshot,
   timestamp?: number
 ): NormalizedOrderBook {
-  // Kalshi 'yes' bids at price X cents = bid at X/100 probability
-  const bids: NormalizedPriceLevel[] = raw.yes
-    .map((entry) => ({
-      price: asProbability(entry.price / 100),
-      size: asDollars(entry.quantity),
-      venue: 'kalshi' as const,
-    }))
-    .filter((level) => level.size > 0)
+  // yes_dollars = YES bids: price is the probability directly
+  // Quantity is in dollars → shares = dollars / yes_price
+  const bids: NormalizedPriceLevel[] = (raw.yes_dollars || [])
+    .map(([priceStr, dollarStr]) => {
+      const price = parseFloat(priceStr);
+      const dollars = parseFloat(dollarStr);
+      return {
+        price: asProbability(price),
+        size: asDollars(price > 0 ? dollars / price : 0),
+        venue: 'kalshi' as const,
+      };
+    })
+    .filter((level) => level.size > 0 && level.price > 0 && level.price < 1)
     .sort((a, b) => b.price - a.price);
 
-  // Kalshi 'no' offers are effectively 'yes' asks
-  // A 'no' bid at price X cents means someone will sell 'yes' at (100-X) cents
-  const asks: NormalizedPriceLevel[] = raw.no
-    .map((entry) => ({
-      price: asProbability((100 - entry.price) / 100),
-      size: asDollars(entry.quantity),
-      venue: 'kalshi' as const,
-    }))
-    .filter((level) => level.size > 0)
+  // no_dollars = NO bids → YES asks at (1 - no_price)
+  // Quantity is in dollars → shares = dollars / no_price
+  const asks: NormalizedPriceLevel[] = (raw.no_dollars || [])
+    .map(([priceStr, dollarStr]) => {
+      const noPrice = parseFloat(priceStr);
+      const dollars = parseFloat(dollarStr);
+      return {
+        price: asProbability(1 - noPrice),
+        size: asDollars(noPrice > 0 ? dollars / noPrice : 0),
+        venue: 'kalshi' as const,
+      };
+    })
+    .filter((level) => level.size > 0 && level.price > 0 && level.price < 1)
     .sort((a, b) => a.price - b.price);
 
   return {

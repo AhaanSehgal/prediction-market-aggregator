@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { createDatafeed } from '@/lib/tradingview-datafeed';
+import { useQuoteStore } from '@/stores/quote-store';
 
 declare global {
   interface Window {
@@ -9,7 +10,8 @@ declare global {
   }
 }
 
-const PURPLE = '#a855f7';
+const PURPLE = '#a855f7';   // Polymarket line
+const CYAN = '#38bdf8';     // Kalshi line
 const GREEN = '#00c076';
 const RED = '#ff4d6a';
 const BG = '#131316';
@@ -21,6 +23,7 @@ export function PriceChart() {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
+  const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
 
   useEffect(() => {
     if (window.TradingView?.widget) {
@@ -35,27 +38,34 @@ export function PriceChart() {
     return () => {};
   }, []);
 
+  // Re-create widget when outcome changes
   useEffect(() => {
-    if (!ready || !containerRef.current || widgetRef.current) return;
+    if (!ready || !containerRef.current) return;
     if (!window.TradingView?.widget) return;
 
+    // Clean up previous widget
+    if (widgetRef.current) {
+      widgetRef.current.remove();
+      widgetRef.current = null;
+    }
+
+    const isNo = selectedOutcome === 'no';
+
     const tvWidget = new window.TradingView.widget({
-      symbol: 'JD Vance 2028',
-      datafeed: createDatafeed(),
+      symbol: 'Market',
+      datafeed: createDatafeed(isNo),
       interval: '60',
       container: containerRef.current,
       library_path: '/charting_library/',
       locale: 'en',
       custom_font_family: "'Satoshi', sans-serif",
       theme: 'dark',
-      // Style 2 = Line chart (default)
-      style: 2,
+      style: 2, // Line chart
       autosize: true,
       toolbar_bg: BG,
       loading_screen: { backgroundColor: BG, foregroundColor: PURPLE },
       custom_css_url: '/tradingview-overrides.css',
       overrides: {
-        // Background
         'paneProperties.background': BG,
         'paneProperties.backgroundType': 'solid',
         'paneProperties.backgroundGradientStartColor': BG,
@@ -64,13 +74,12 @@ export function PriceChart() {
         'paneProperties.horzGridProperties.color': GRID,
         'paneProperties.separatorColor': BORDER,
 
-        // Scales
         'scalesProperties.backgroundColor': BG,
         'scalesProperties.textColor': TEXT_DIM,
         'scalesProperties.lineColor': BORDER,
         'scalesProperties.fontSize': 11,
 
-        // Area style — purple line with gradient fill (Fireplace look)
+        // Area style
         'mainSeriesProperties.areaStyle.color1': 'rgba(168, 85, 247, 0.28)',
         'mainSeriesProperties.areaStyle.color2': 'rgba(168, 85, 247, 0.0)',
         'mainSeriesProperties.areaStyle.linecolor': PURPLE,
@@ -78,7 +87,7 @@ export function PriceChart() {
         'mainSeriesProperties.areaStyle.priceSource': 'close',
         'mainSeriesProperties.areaStyle.transparency': 0,
 
-        // Line style fallback
+        // Line style
         'mainSeriesProperties.lineStyle.color': PURPLE,
         'mainSeriesProperties.lineStyle.linewidth': 2,
         'mainSeriesProperties.lineStyle.priceSource': 'close',
@@ -91,14 +100,21 @@ export function PriceChart() {
         'mainSeriesProperties.candleStyle.wickUpColor': GREEN + '80',
         'mainSeriesProperties.candleStyle.wickDownColor': RED + '80',
 
-        // Price line
         'mainSeriesProperties.priceLineColor': PURPLE,
         'mainSeriesProperties.priceLineWidth': 1,
 
-        // Crosshair
         'paneProperties.crossHairProperties.color': '#5a5a6680',
         'paneProperties.crossHairProperties.style': 2,
 
+        // Hide the on-chart legend overlay (symbol name, OHLC values)
+        'paneProperties.legendProperties.showLegend': false,
+        'paneProperties.legendProperties.showSeriesTitle': false,
+        'paneProperties.legendProperties.showSeriesOHLC': false,
+        'paneProperties.legendProperties.showStudyTitles': false,
+        'paneProperties.legendProperties.showStudyValues': false,
+        'paneProperties.legendProperties.showStudyArguments': false,
+        'paneProperties.legendProperties.showBarChange': false,
+        'paneProperties.legendProperties.showVolume': false,
       },
       studies_overrides: {
         'volume.volume.color.0': RED,
@@ -124,6 +140,7 @@ export function PriceChart() {
         'legend_context_menu',
         'main_series_scale_menu',
         'create_volume_indicator_by_default',
+        'chart_crosshair_menu',
       ],
       enabled_features: [
         'header_chart_type',
@@ -144,7 +161,6 @@ export function PriceChart() {
     tvWidget.onChartReady(() => {
       const chart = tvWidget.activeChart();
 
-      // Force background + area style overrides via API
       try {
         chart.applyOverrides({
           'paneProperties.background': BG,
@@ -152,31 +168,17 @@ export function PriceChart() {
           'paneProperties.backgroundGradientStartColor': BG,
           'paneProperties.backgroundGradientEndColor': BG,
           'scalesProperties.backgroundColor': BG,
-          'mainSeriesProperties.areaStyle.linecolor': PURPLE,
-          'mainSeriesProperties.areaStyle.linewidth': 2,
-          'mainSeriesProperties.areaStyle.color1': 'rgba(168, 85, 247, 0.28)',
-          'mainSeriesProperties.areaStyle.color2': 'rgba(168, 85, 247, 0.0)',
-          'mainSeriesProperties.areaStyle.transparency': 0,
           'mainSeriesProperties.lineStyle.color': PURPLE,
         });
-      } catch {
-        // Some TV versions don't support applyOverrides
-      }
+      } catch { /* noop */ }
 
-      // Force line chart type (2)
-      try {
-        chart.setChartType(2);
-      } catch {
-        // Fallback — style param should handle it
-      }
+      try { chart.setChartType(2); } catch { /* noop */ }
 
-      // Add volume overlaid on main chart pane (like Fireplace — bars at bottom of price chart)
       chart.createStudy('Volume', true, false, undefined, undefined, {
         'color.0': RED,
         'color.1': GREEN,
         'transparency': 50,
       });
-
     });
 
     widgetRef.current = tvWidget;
@@ -187,11 +189,20 @@ export function PriceChart() {
         widgetRef.current = null;
       }
     };
-  }, [ready]);
+  }, [ready, selectedOutcome]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden" style={{ backgroundColor: '#131316' }}>
-      <div ref={containerRef} className="absolute inset-0" style={{ backgroundColor: '#131316' }} />
+    <div className="relative h-full w-full overflow-hidden" style={{ backgroundColor: BG }}>
+      <div ref={containerRef} className="absolute inset-0" style={{ backgroundColor: BG }} />
+      {/* Gradient overlay — hue-blends purple→cyan onto the bright chart line only */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `linear-gradient(to right, ${PURPLE}, ${CYAN})`,
+          mixBlendMode: 'hue',
+          opacity: 1,
+        }}
+      />
     </div>
   );
 }
