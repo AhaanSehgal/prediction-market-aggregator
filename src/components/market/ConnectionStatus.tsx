@@ -1,42 +1,133 @@
 'use client';
 
-import { useConnectionHealth } from '@/hooks/useConnectionHealth';
+import { useConnectionHealth, useAreAllVenuesConnected } from '@/hooks/useConnectionHealth';
 import { VENUE_LABELS } from '@/domain/market/constants';
 import { VenueId, ConnectionState } from '@/domain/orderbook/types';
+import { Skeleton } from '@/components/ui/Skeleton';
 
-function StatusDot({ state }: { state: ConnectionState }) {
-  const config: Record<ConnectionState['status'], { color: string; pulse: boolean }> = {
-    connected: { color: 'bg-bid', pulse: false },
-    connecting: { color: 'bg-yellow-500', pulse: true },
-    disconnected: { color: 'bg-muted', pulse: false },
-    error: { color: 'bg-ask', pulse: true },
-  };
+const VENUE_LOGOS: Record<VenueId, string> = {
+  polymarket: '/polymarket-logo.png',
+  kalshi: '/kalshi-logo.png',
+};
 
-  const { color, pulse } = config[state.status];
+function statusDotColor(state: ConnectionState): string {
+  switch (state.status) {
+    case 'connected':
+      return 'bg-bid';
+    case 'connecting':
+      return 'bg-yellow-500';
+    case 'error':
+      return 'bg-ask';
+    case 'disconnected':
+      return 'bg-muted';
+  }
+}
+
+function shouldPulse(state: ConnectionState): boolean {
+  return state.status === 'connecting' || state.status === 'error';
+}
+
+function statusLabel(state: ConnectionState): { text: string; color: string } {
+  switch (state.status) {
+    case 'connected':
+      return { text: 'Live', color: 'text-bid' };
+    case 'connecting':
+      return { text: 'Connecting', color: 'text-yellow-500' };
+    case 'error':
+      return { text: 'Error', color: 'text-ask' };
+    case 'disconnected':
+      return { text: 'Offline', color: 'text-muted' };
+  }
+}
+
+/**
+ * Per-venue connection indicators with logos + explicit "Live" / "Offline" labels.
+ * Sits in the market sub-header.
+ */
+export function VenueStatus() {
+  const connections = useConnectionHealth();
+  const venues = Object.keys(connections) as VenueId[];
+
+  // Show skeletons until at least one venue has connected once
+  const anyEverConnected = venues.some(
+    (v) => connections[v].lastMessageAt !== null
+  );
+
+  if (!anyEverConnected) {
+    return (
+      <div className="hidden lg:flex items-center gap-4 shrink-0">
+        {venues.map((venue) => (
+          <div key={venue} className="flex items-center gap-1.5">
+            <Skeleton className="w-3.5 h-3.5 rounded-[3px]" />
+            <Skeleton className="w-16 h-3 rounded" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <span className="relative flex h-1.5 w-1.5">
-      {pulse && (
-        <span className={`absolute inset-0 rounded-full ${color} animate-ping opacity-75`} />
-      )}
-      <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${color}`} />
-    </span>
+    <div className="hidden lg:flex items-center gap-4 shrink-0">
+      {venues.map((venue) => {
+        const conn = connections[venue];
+        const dotColor = statusDotColor(conn.state);
+        const pulse = shouldPulse(conn.state);
+        const label = statusLabel(conn.state);
+
+        return (
+          <div key={venue} className="flex items-center gap-1.5">
+            <img
+              src={VENUE_LOGOS[venue]}
+              alt={VENUE_LABELS[venue]}
+              className="w-3.5 h-3.5 rounded-[3px] object-cover"
+            />
+            <span className="text-[10px] text-muted-light">
+              {VENUE_LABELS[venue]}
+            </span>
+            <span className="relative flex h-1.5 w-1.5">
+              {pulse && (
+                <span
+                  className={`absolute inset-0 rounded-full ${dotColor} animate-ping opacity-75`}
+                />
+              )}
+              <span
+                className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColor}`}
+              />
+            </span>
+            <span className={`text-[9px] font-mono font-medium ${label.color}`}>
+              {label.text}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
-export function ConnectionStatus() {
-  const connections = useConnectionHealth();
+/**
+ * Minimal footer — online/offline network indicator.
+ */
+export function NetworkFooter() {
+  const allConnected = useAreAllVenuesConnected();
 
   return (
-    <div className="flex items-center gap-3 shrink-0">
-      {(Object.keys(connections) as VenueId[]).map((venue) => (
-        <div key={venue} className="flex items-center gap-1.5">
-          <StatusDot state={connections[venue].state} />
-          <span className="text-[11px] font-mono text-muted">
-            {VENUE_LABELS[venue]}
-          </span>
-        </div>
-      ))}
-    </div>
+    <footer className="flex items-center justify-between px-4 py-1 border-t border-border bg-surface shrink-0">
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-1.5 w-1.5">
+          {!allConnected && (
+            <span className="absolute inset-0 rounded-full bg-ask animate-ping opacity-75" />
+          )}
+          <span
+            className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+              allConnected ? 'bg-bid' : 'bg-ask'
+            }`}
+          />
+        </span>
+        <span className={`text-[10px] font-mono ${allConnected ? 'text-muted' : 'text-ask'}`}>
+          {allConnected ? 'Stable' : 'Unstable'}
+        </span>
+      </div>
+      <span className="text-[10px] text-muted font-mono">galactic.pro</span>
+    </footer>
   );
 }

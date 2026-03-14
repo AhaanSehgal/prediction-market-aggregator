@@ -8,6 +8,7 @@ import { useMarketPrice } from '@/hooks/useMarketPrice';
 import { useMarketStats } from '@/hooks/useMarketStats';
 import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
 import { MergedOrderBook, MergedPriceLevel, asProbability, asDollars } from '@/domain/orderbook/types';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /** Remove crossed levels from a merged book (asks below best bid) */
 function uncrossBook(book: MergedOrderBook): MergedOrderBook {
@@ -138,10 +139,12 @@ export function QuotePanel() {
         <span className="text-[13px] text-muted-light">Outcome</span>
         <span className={`text-[13px] font-medium ${isNo ? 'text-ask' : 'text-bid'}`}>
           {outcomeLabel}
-          {currentPrice !== null && (
+          {currentPrice !== null ? (
             <span className="text-muted ml-1.5 font-mono text-[12px]">
               {(currentPrice * 100).toFixed(1)}¢
             </span>
+          ) : (
+            <Skeleton className="inline-block w-10 h-3.5 ml-1.5 align-middle" />
           )}
         </span>
       </div>

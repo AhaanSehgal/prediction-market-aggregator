@@ -58,10 +58,22 @@ export function useOrderBook() {
       polySocketRef.current = polySocket;
 
       // REST polling fallback — ensures data stays fresh even if WS drops
+      let polyPollFailures = 0;
       polyPollRef.current = setInterval(() => {
         fetchPolymarketBook(tokenId)
-          .then((book) => updateVenueBook('polymarket', book))
-          .catch(() => {}); // Silent fail, WS or next poll will recover
+          .then((book) => {
+            polyPollFailures = 0;
+            updateVenueBook('polymarket', book);
+          })
+          .catch(() => {
+            polyPollFailures++;
+            if (polyPollFailures >= 3) {
+              updateConnectionState('polymarket', {
+                status: 'error',
+                error: 'Network unreachable',
+              });
+            }
+          });
       }, POLY_POLL_MS);
     }
 

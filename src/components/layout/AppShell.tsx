@@ -1,11 +1,12 @@
 'use client';
 
-import { ConnectionStatus } from '@/components/market/ConnectionStatus';
+import { VenueStatus, NetworkFooter } from '@/components/market/ConnectionStatus';
 import { useQuoteStore } from '@/stores/quote-store';
 import { useMarketPrice } from '@/hooks/useMarketPrice';
 import { useMarketStats, formatStats } from '@/hooks/useMarketStats';
 import { DEFAULT_MARKET } from '@/domain/market/constants';
 import { LiveTitle } from './LiveTitle';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 const NAV_LINKS = ['Discover', 'Portfolio', 'Wallet Tracker', 'Leaderboard', 'Watchlist', 'Referrals'];
 
@@ -54,8 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="ml-auto text-[10px] text-muted border border-border-light rounded px-1 py-0.5 font-mono">K</span>
           </div>
 
-          {/* <ConnectionStatus /> */}
-
           {/* Sign In */}
           <button className="px-4 py-1.5 text-[13px] text-foreground bg-surface-2 border border-border-light rounded-md hover:bg-surface-3 transition-colors">
             Sign In
@@ -78,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* YES/NO pills */}
-        {yesPrice !== null && noPrice !== null && (
+        {yesPrice !== null && noPrice !== null ? (
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setSelectedOutcome('yes')}
@@ -101,38 +100,63 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               NO {(noPrice * 100).toFixed(1)}¢
             </button>
           </div>
+        ) : (
+          <div className="flex items-center gap-2 shrink-0">
+            <Skeleton className="w-[88px] h-[30px] rounded-md" />
+            <Skeleton className="w-[88px] h-[30px] rounded-md" />
+          </div>
         )}
 
         {/* Divider */}
         <div className="w-px h-6 bg-border shrink-0" />
 
         {/* Market stats */}
-        <div className="hidden lg:flex items-center gap-8 text-[11px] font-mono shrink-0">
-          <div className="flex flex-col items-start gap-0.5">
-            <span className="text-muted text-[10px]">Expires</span>
-            <span className="text-muted-light">{s.expires}</span>
+        {yesPrice !== null ? (
+          <div className="hidden lg:flex items-center gap-8 text-[11px] font-mono shrink-0">
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-muted text-[10px]">Expires</span>
+              <span className="text-muted-light">{s.expires}</span>
+            </div>
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-muted text-[10px]">24h Change</span>
+              <span className={s.change24hPositive ? 'text-bid' : 'text-ask'}>{s.change24h}</span>
+            </div>
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-muted text-[10px]">24h Volume</span>
+              <span className="text-muted-light">{s.volume24h}</span>
+            </div>
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-muted text-[10px]">Total Volume</span>
+              <span className="text-muted-light">{s.totalVolume}</span>
+            </div>
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-muted text-[10px]">Liquidity</span>
+              <span className="text-muted-light">{s.liquidity}</span>
+            </div>
           </div>
-          <div className="flex flex-col items-start gap-0.5">
-            <span className="text-muted text-[10px]">24h Change</span>
-            <span className={s.change24hPositive ? 'text-bid' : 'text-ask'}>{s.change24h}</span>
+        ) : (
+          <div className="hidden lg:flex items-center gap-8 shrink-0">
+            {['Expires', '24h Change', '24h Volume', 'Total Volume', 'Liquidity'].map((label) => (
+              <div key={label} className="flex flex-col items-start gap-1">
+                <span className="text-muted text-[10px] font-mono">{label}</span>
+                <Skeleton className="w-14 h-3.5 rounded" />
+              </div>
+            ))}
           </div>
-          <div className="flex flex-col items-start gap-0.5">
-            <span className="text-muted text-[10px]">24h Volume</span>
-            <span className="text-muted-light">{s.volume24h}</span>
-          </div>
-          <div className="flex flex-col items-start gap-0.5">
-            <span className="text-muted text-[10px]">Total Volume</span>
-            <span className="text-muted-light">{s.totalVolume}</span>
-          </div>
-          <div className="flex flex-col items-start gap-0.5">
-            <span className="text-muted text-[10px]">Liquidity</span>
-            <span className="text-muted-light">{s.liquidity}</span>
-          </div>
-        </div>
+        )}
+
+        {/* Divider */}
+        <div className="hidden lg:block w-px h-6 bg-border shrink-0" />
+
+        {/* Venue connection status */}
+        <VenueStatus />
       </div>
 
       {/* Main content */}
       <main className="flex-1 overflow-hidden">{children}</main>
+
+      {/* Footer — network health */}
+      <NetworkFooter />
     </div>
   );
 }

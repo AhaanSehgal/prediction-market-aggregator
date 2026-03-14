@@ -92,7 +92,7 @@ export default function Home() {
   useOrderBook();
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [bottomHeight, setBottomHeight] = useState(240);
+  const [bottomHeight, setBottomHeight] = useState(160);
   const [obWidth, setObWidth] = useState(280);
 
   const handleRowDrag = useCallback((deltaY: number) => {

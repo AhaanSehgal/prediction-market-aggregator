@@ -80,7 +80,7 @@ function DepthBar({
     const venueColor = VENUE_COLORS[level.venues[0]?.venue ?? 'polymarket'];
     return (
       <div
-        className="absolute inset-y-0 right-0 pointer-events-none"
+        className="absolute inset-y-0 left-0 pointer-events-none"
         style={{
           width: `${barWidthPct}%`,
           background: `linear-gradient(90deg, ${venueColor}18, ${sideColor})`,
@@ -98,7 +98,7 @@ function DepthBar({
 
   return (
     <div
-      className="absolute inset-y-0 right-0 pointer-events-none"
+      className="absolute inset-y-0 left-0 pointer-events-none"
       style={{
         width: `${barWidthPct}%`,
         background: `linear-gradient(90deg, ${c2}30 0%, ${c2}20 ${100 - dominantPct}%, ${c1}20 ${100 - dominantPct}%, ${c1}30 100%)`,
@@ -427,7 +427,7 @@ export function OrderBookPanel() {
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         {asks.length === 0 && bids.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-muted text-[11px] font-mono">
-            Waiting for data...
+            Waiting for data…
           </div>
         ) : (
           <>

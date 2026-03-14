@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { createDatafeed } from '@/lib/tradingview-datafeed';
 import { useQuoteStore } from '@/stores/quote-store';
+import { ChartSkeleton } from '@/components/ui/Skeleton';
 
 declare global {
   interface Window {
@@ -23,6 +24,7 @@ export function PriceChart() {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
+  const [chartReady, setChartReady] = useState(false);
   const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
 
   useEffect(() => {
@@ -44,6 +46,7 @@ export function PriceChart() {
     if (!window.TradingView?.widget) return;
 
     // Clean up previous widget
+    setChartReady(false);
     if (widgetRef.current) {
       widgetRef.current.remove();
       widgetRef.current = null;
@@ -159,6 +162,7 @@ export function PriceChart() {
     });
 
     tvWidget.onChartReady(() => {
+      setChartReady(true);
       const chart = tvWidget.activeChart();
 
       try {
@@ -193,6 +197,11 @@ export function PriceChart() {
 
   return (
     <div className="relative h-full w-full overflow-hidden" style={{ backgroundColor: BG }}>
+      {!chartReady && (
+        <div className="absolute inset-0 z-10">
+          <ChartSkeleton />
+        </div>
+      )}
       <div ref={containerRef} className="absolute inset-0" style={{ backgroundColor: BG }} />
       {/* Gradient overlay — hue-blends purple→cyan onto the bright chart line only */}
       <div
