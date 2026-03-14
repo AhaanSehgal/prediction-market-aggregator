@@ -113,8 +113,8 @@ export function createDatafeed(invertPrices = false) {
 
     resolveSymbol: (_symbolName: string, onResolve: (si: SymbolInfo) => void) => {
       setTimeout(() => onResolve({
-        name: DEFAULT_MARKET.title,
-        full_name: DEFAULT_MARKET.title,
+        name: invertPrices ? 'No' : 'Yes',
+        full_name: invertPrices ? 'No' : 'Yes',
         description: DEFAULT_MARKET.title,
         type: 'crypto',
         session: '24x7',
