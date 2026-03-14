@@ -1,0 +1,95 @@
+/* ── TradingView overrides — match Fireplace dark theme ── */
+
+/* Import Satoshi font inside TV iframe */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-VariableItalic.woff2') format('woff2');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: italic;
+}
+
+/* Apply Satoshi everywhere in TV */
+* {
+  font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Root backgrounds */
+body, html {
+  background-color: #131316 !important;
+}
+
+/* Layout areas */
+.layout__area--center,
+.layout__area--top,
+.layout__area--bottom,
+.layout__area--right,
+.layout__area--left {
+  background-color: #131316 !important;
+}
+
+/* Chart structure */
+.chart-markup-table,
+.chart-controls-bar,
+.chart-gui-wrapper,
+.chart-container-border {
+  background-color: #131316 !important;
+}
+
+/* Table cells in chart markup */
+.chart-markup-table td {
+  background-color: #131316 !important;
+}
+
+/* Top toolbar — force background + border */
+.layout__area--top {
+  border-bottom: 1px solid #222226 !important;
+}
+.layout__area--top,
+.layout__area--top *,
+.layout__area--top > div,
+.layout__area--top > div > div {
+  background-color: #131316 !important;
+  background: #131316 !important;
+}
+
+/* Bottom axis border */
+.layout__area--bottom {
+  border-top: 1px solid #222226 !important;
+}
+
+/* Right axis border */
+.layout__area--right {
+  border-left: 1px solid #222226 !important;
+}
+
+/* Header button text */
+.layout__area--top button {
+  color: #8a8a96 !important;
+}
+.layout__area--top button:hover {
+  color: #e4e4e7 !important;
+}
+
+/* Active resolution highlight */
+.layout__area--top .isActive-merBkM5y,
+.layout__area--top .button-merBkM5y.isActive-merBkM5y {
+  color: #e4e4e7 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px !important; height: 3px !important; }
+::-webkit-scrollbar-thumb { background: #2a2a30 !important; border-radius: 1px !important; }
+::-webkit-scrollbar-track { background: transparent !important; }
+
+/* Pane separator */
+.chart-markup-table .pane-separator {
+  background-color: #222226 !important;
+}

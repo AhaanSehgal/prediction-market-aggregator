@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+:root {
+  --background: #131316;
+  --foreground: #e4e4e7;
+  --surface: #131316;
+  --surface-2: #1a1a1e;
+  --surface-3: #222228;
+  --border: #222226;
+  --border-light: #2e2e34;
+  --muted: #5a5a66;
+  --muted-light: #8a8a96;
+  --bid: #00c076;
+  --bid-bright: #00e68a;
+  --bid-dim: rgba(0, 192, 118, 0.08);
+  --bid-bar: rgba(0, 192, 118, 0.15);
+  --ask: #ff4d6a;
+  --ask-bright: #ff6680;
+  --ask-dim: rgba(255, 77, 106, 0.08);
+  --ask-bar: rgba(255, 77, 106, 0.15);
+  --accent: #4da6ff;
+  --accent-dim: rgba(77, 166, 255, 0.08);
+  --polymarket: #8b5cf6;
+  --kalshi: #3b82f6;
+  --white: #f0f0f2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-muted: var(--muted);
+  --color-muted-light: var(--muted-light);
+  --color-bid: var(--bid);
+  --color-bid-bright: var(--bid-bright);
+  --color-bid-dim: var(--bid-dim);
+  --color-bid-bar: var(--bid-bar);
+  --color-ask: var(--ask);
+  --color-ask-bright: var(--ask-bright);
+  --color-ask-dim: var(--ask-dim);
+  --color-ask-bar: var(--ask-bar);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-polymarket: var(--polymarket);
+  --color-kalshi: var(--kalshi);
+  --color-white: var(--white);
+  --font-sans: var(--font-satoshi);
+  --font-mono: var(--font-satoshi);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-satoshi), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Price flash animations */
+@keyframes flash-green {
+  0% { background-color: rgba(0, 192, 118, 0.25); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flash-red {
+  0% { background-color: rgba(255, 77, 106, 0.25); }
+  100% { background-color: transparent; }
+}
+
+.flash-up {
+  animation: flash-green 0.5s ease-out;
+}
+
+.flash-down {
+  animation: flash-red 0.5s ease-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 1px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Tab active underline */
+.tab-active {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
