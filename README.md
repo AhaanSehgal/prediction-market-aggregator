@@ -73,9 +73,9 @@ Venue sockets/pollers receive raw data. Normalizers convert to `NormalizedOrderB
 
 The codebase follows strict dependency inversion. The dependency graph flows one way: components -> hooks -> domain.
 
-**Domain layer** (`domain/orderbook/transforms.ts`, `quote-engine.ts`, `aggregator.ts`, `normalizer.ts`): All order book transforms - flipping, uncrossing, tick grouping, venue filtering, cumulative math - are pure functions with zero dependencies on React or stores. Fully testable in isolation.
+**Domain layer** (`domain/orderbook/transforms.ts`, `quote-engine.ts`, `aggregator.ts`, `normalizer.ts`): All order book transforms - flipping, uncrossing, tick grouping, venue filtering, cumulative math - are pure functions with zero dependencies on React or stores.
 
-**Hooks layer** (`useOrderBookView`, `useBookForQuote`): Compose domain functions with Zustand store state. `useOrderBookView` replaces ~150 lines of inline `useMemo`/`useEffect` that previously lived in the component. `useBookForQuote` handles book transforms + quote computation for the trade panel.
+**Hooks layer** (`useOrderBookView`, `useBookForQuote`): Compose domain functions with Zustand store state.
 
 **Component layer**: Thin presentational shells. `OrderBookPanel` is a composer that calls `useOrderBookView()` and renders sub-components (`OrderBookHeader`, `BalanceBar`, `SpreadRow`). `QuotePanel` uses `useBookForQuote()` and renders 6 pure sub-components (`SideTabs`, `OutcomeRow`, `AmountInput`, `QuickAmounts`, `QuoteDetails`, `FillSplit`, `PayoutSummary`). All sub-components are props-in, JSX-out.
 
