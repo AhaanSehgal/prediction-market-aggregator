@@ -1,4 +1,4 @@
-# Galactic.pro — Prediction Market Aggregator
+# Galactic.pro - Prediction Market Aggregator
 
 A real-time prediction market aggregator that combines order book data from **Polymarket** and **Kalshi** into a single unified trading interface. Built for the Fireplace.gg take-home assignment.
 
