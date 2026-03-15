@@ -122,7 +122,7 @@ function VenueTooltip({ level, side, anchorRef }: { level: MergedPriceLevel; sid
       }}
     >
       <div className="text-[10px] font-mono text-muted-light mb-1.5 font-medium">
-        {(level.price * 100).toFixed(1)}¢ — {side === 'bid' ? 'Buy' : 'Sell'} Side
+        {(level.price * 100).toFixed(1)}¢
       </div>
       {level.venues.map((v) => (
         <div key={v.venue} className="flex items-center gap-2 text-[10px] font-mono py-0.5">
@@ -138,10 +138,9 @@ function VenueTooltip({ level, side, anchorRef }: { level: MergedPriceLevel; sid
       ))}
       {level.venues.length > 1 && (
         <>
-          <div className="border-t border-border mt-1.5 pt-1.5 flex items-center gap-2 text-[10px] font-mono">
-            <span className="w-[8px]" />
-            <span className="text-muted min-w-[70px]">Combined</span>
-            <span className="text-foreground font-medium ml-auto pl-4">
+          <div className="border-t border-border mt-1.5 pt-1.5 flex items-center justify-between text-[10px] font-mono">
+            <span className="text-muted">Combined</span>
+            <span className="text-foreground font-medium">
               {level.totalSize.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} shares
             </span>
           </div>
