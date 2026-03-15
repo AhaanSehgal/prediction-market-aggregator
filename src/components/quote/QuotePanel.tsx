@@ -10,15 +10,24 @@ import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
 import { MergedOrderBook, MergedPriceLevel, asProbability, asDollars } from '@/domain/orderbook/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 
-/** Remove crossed levels from a merged book (asks below best bid) */
+/** Remove crossed levels and distant stale orders from a merged book */
 function uncrossBook(book: MergedOrderBook): MergedOrderBook {
+  const MAX_DISTANCE = 0.15; // 15¢ from best bid/ask
   const bestBid = book.bids.length > 0 ? book.bids[0].price : 0;
   const uncrossedAsks = book.asks.filter((l) => l.price > bestBid);
   const bestAsk = uncrossedAsks.length > 0 ? uncrossedAsks[0].price : null;
 
+  // Filter out distant stale limit orders
+  const cleanAsks = bestAsk !== null
+    ? uncrossedAsks.filter((l) => l.price <= bestAsk + MAX_DISTANCE)
+    : uncrossedAsks;
+  const cleanBids = bestBid > 0
+    ? book.bids.filter((l) => l.price >= bestBid - MAX_DISTANCE)
+    : book.bids;
+
   return {
-    bids: book.bids,
-    asks: uncrossedAsks,
+    bids: cleanBids,
+    asks: cleanAsks,
     bestBid: bestBid > 0 ? asProbability(bestBid) : null,
     bestAsk: bestAsk !== null ? asProbability(bestAsk) : null,
     spread: bestAsk !== null && bestBid > 0 ? bestAsk - bestBid : null,

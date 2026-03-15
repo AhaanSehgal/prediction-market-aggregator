@@ -283,26 +283,38 @@ export function OrderBookPanel() {
     return 1;
   }, [rawAsks, bestBid]);
 
-  const asks = useMemo(() => {
+  // Group ALL levels first (for total depth), then slice for display
+  const allAsksGrouped = useMemo(() => {
     const filtered = rawAsks.filter((l) => l.price >= bestAsk);
-    return groupByTick(filtered, tickSize, 'ask').slice(0, MAX_LEVELS).reverse();
+    return groupByTick(filtered, tickSize, 'ask');
   }, [rawAsks, tickSize, bestAsk]);
 
-  const bids = useMemo(
-    () => groupByTick(rawBids, tickSize, 'bid').slice(0, MAX_LEVELS),
-    [rawBids, tickSize]
-  );
+  const allBidsGrouped = useMemo(() => {
+    return groupByTick(rawBids, tickSize, 'bid');
+  }, [rawBids, tickSize]);
 
-  // Auto-scroll asks to bottom
+  const asks = useMemo(() => [...allAsksGrouped].reverse(), [allAsksGrouped]);
+  const bids = useMemo(() => allBidsGrouped, [allBidsGrouped]);
+
+  // Auto-scroll asks to bottom once data has stabilized (wait for 2+ updates)
+  const hasAutoScrolled = useRef(false);
+  const askUpdateCount = useRef(0);
   useEffect(() => {
-    if (asksScrollRef.current) {
+    if (hasAutoScrolled.current || asks.length === 0) return;
+    askUpdateCount.current++;
+    // Wait for at least 2 data updates so the book is fuller
+    if (askUpdateCount.current >= 2 && asksScrollRef.current) {
       asksScrollRef.current.scrollTop = asksScrollRef.current.scrollHeight;
+      hasAutoScrolled.current = true;
     }
   }, [asks]);
 
+  // Cumulative shares from spread outward: bottom of asks list (closest to spread) accumulates upward
   const askCumulatives = useMemo(() => {
     const cum: number[] = new Array(asks.length);
     let total = 0;
+    // asks is reversed: index 0 = furthest (99.9¢), last = closest to spread
+    // Accumulate from closest to spread → furthest
     for (let i = asks.length - 1; i >= 0; i--) {
       total += asks[i].totalSize;
       cum[i] = total;
@@ -320,10 +332,18 @@ export function OrderBookPanel() {
     return cum;
   }, [bids]);
 
-  const maxCumulative = useMemo(
-    () => Math.max(askCumulatives[0] ?? 0, bidCumulatives[bidCumulatives.length - 1] ?? 0, 1),
-    [askCumulatives, bidCumulatives]
-  );
+  // Scale bars against TOTAL depth across ALL levels (not just visible 12)
+  const totalAskDepth = useMemo(() => {
+    let total = 0;
+    for (const l of allAsksGrouped) total += l.totalSize;
+    return Math.max(total, 1);
+  }, [allAsksGrouped]);
+
+  const totalBidDepth = useMemo(() => {
+    let total = 0;
+    for (const l of allBidsGrouped) total += l.totalSize;
+    return Math.max(total, 1);
+  }, [allBidsGrouped]);
 
   // Cumulative USD from the spread outward — matches Fireplace
   const askCumUsd = useMemo(() => {
@@ -439,7 +459,7 @@ export function OrderBookPanel() {
                     key={`a-${level.price}`}
                     level={level}
                     side="ask"
-                    barWidth={maxCumulative > 0 ? Math.min(((askCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0}
+                    barWidth={Math.min(((askCumulatives[i] ?? 0) / totalAskDepth) * 100, 100)}
                     cumUsd={askCumUsd[i] ?? 0}
                     hoveredRow={hoveredRow}
                     setHoveredRow={setHoveredRow}
@@ -474,7 +494,7 @@ export function OrderBookPanel() {
                   key={`b-${level.price}`}
                   level={level}
                   side="bid"
-                  barWidth={maxCumulative > 0 ? Math.min(((bidCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0}
+                  barWidth={Math.min(((bidCumulatives[i] ?? 0) / totalBidDepth) * 100, 100)}
                   cumUsd={bidCumUsd[i] ?? 0}
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
