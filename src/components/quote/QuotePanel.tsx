@@ -99,10 +99,6 @@ export function QuotePanel() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Pure presentational sub-components
-// ---------------------------------------------------------------------------
-
 function SideTabs({ side, setSide }: { side: 'buy' | 'sell'; setSide: (s: 'buy' | 'sell') => void }) {
   return (
     <div className="grid grid-cols-2 border-b border-border shrink-0">

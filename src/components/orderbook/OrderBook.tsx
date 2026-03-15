@@ -52,13 +52,11 @@ export function OrderBook() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-2 h-8 border-b border-border shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-medium text-foreground">Order Book</span>
           <span className="text-[11px] text-muted">(Yes)</span>
         </div>
-        {/* Venue legend */}
         <div className="flex items-center gap-2 text-[10px] font-mono text-muted">
           <span className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: VENUE_COLORS.polymarket }} />
@@ -71,7 +69,6 @@ export function OrderBook() {
         </div>
       </div>
 
-      {/* Bid/Ask balance bar */}
       <div className="flex items-center gap-2 px-2 h-6 border-b border-border shrink-0">
         <span className="text-[10px] font-mono text-bid">B {bidPct}%</span>
         <div className="flex-1 flex h-[3px] rounded-full overflow-hidden">
@@ -81,7 +78,6 @@ export function OrderBook() {
         <span className="text-[10px] font-mono text-ask">{100 - bidPct}% S</span>
       </div>
 
-      {/* Column headers */}
       <div
         className="grid px-2 h-5 items-center text-[10px] font-mono text-muted border-b border-border shrink-0"
         style={{ gridTemplateColumns: '48px 1fr 68px' }}
@@ -97,7 +93,6 @@ export function OrderBook() {
         </div>
       ) : (
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Asks */}
           <div className="flex-1 flex flex-col justify-end overflow-hidden">
             <div className="overflow-y-auto">
               {asks.map((level, i) => (
@@ -112,7 +107,6 @@ export function OrderBook() {
             </div>
           </div>
 
-          {/* Spread */}
           <div className="flex items-center justify-between px-2 h-7 border-y border-border bg-surface-2 shrink-0">
             <span className="text-[11px] font-mono text-muted">Spread</span>
             <div className="flex items-center gap-2 text-[11px] font-mono">
@@ -129,7 +123,6 @@ export function OrderBook() {
             </div>
           </div>
 
-          {/* Bids */}
           <div className="flex-1 overflow-y-auto">
             {bids.map((level, i) => (
               <OrderBookRow

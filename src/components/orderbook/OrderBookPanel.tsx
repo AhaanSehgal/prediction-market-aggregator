@@ -16,10 +16,6 @@ function fmtCompact(n: number, prefix = ''): string {
   return `${prefix}${n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
-// ---------------------------------------------------------------------------
-// Row-level presentational components
-// ---------------------------------------------------------------------------
-
 function DepthBar({
   level,
   barWidthPct,
@@ -190,10 +186,6 @@ function OrderRow({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// OrderBookPanel — thin composer, no business logic
-// ---------------------------------------------------------------------------
 
 export function OrderBookPanel() {
   const view = useOrderBookView();

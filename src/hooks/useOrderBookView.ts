@@ -20,7 +20,6 @@ const TICK_OPTIONS_ALL = [0.1, 0.2, 0.5, 1, 2] as const;
 const TICK_OPTIONS_KALSHI = [1, 2] as const;
 
 export interface OrderBookViewState {
-  // Display data
   asks: MergedPriceLevel[];
   bids: MergedPriceLevel[];
   askCumulatives: number[];
@@ -29,23 +28,17 @@ export interface OrderBookViewState {
   bidCumUsd: number[];
   totalAskDepth: number;
   totalBidDepth: number;
-
-  // Spread & balance
   bestBid: number;
   bestAsk: number;
   spreadValue: number;
   midpoint: number;
   bidPct: number;
-
-  // Controls
   isNo: boolean;
   tickSize: number;
   setTickSize: (t: number) => void;
   venueFilter: VenueFilter;
   setVenueFilter: (v: VenueFilter) => void;
   tickOptions: readonly number[];
-
-  // Scroll management
   asksScrollRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -60,7 +53,6 @@ export function useOrderBookView(): OrderBookViewState {
   const isNo = selectedOutcome === 'no';
   const tickOptions = venueFilter === 'kalshi' ? TICK_OPTIONS_KALSHI : TICK_OPTIONS_ALL;
 
-  // Auto-set tick to 1¢ when No + All venues, and enforce Kalshi minimum
   const handleSetVenueFilter = useCallback(
     (v: VenueFilter) => {
       setVenueFilter(v);
@@ -69,17 +61,16 @@ export function useOrderBookView(): OrderBookViewState {
     [tickSize]
   );
 
-  // Reset scroll state and auto-set tick when outcome flips
   const hasAutoScrolled = useRef(false);
   const askUpdateCount = useRef(0);
 
   useEffect(() => {
     hasAutoScrolled.current = false;
     askUpdateCount.current = 0;
-    if (isNo && venueFilter === 'all' && tickSize < 1) setTickSize(1);
-  }, [isNo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isNo]);
 
-  // --- Derived data (all pure computations via useMemo) ---
+  const minTick = (isNo && venueFilter === 'all') || venueFilter === 'kalshi' ? 1 : 0.1;
+  const effectiveTickSize = Math.max(tickSize, minTick);
 
   const rawAsks = useMemo(() => {
     const source = isNo
@@ -106,18 +97,17 @@ export function useOrderBookView(): OrderBookViewState {
 
   const allAsksGrouped = useMemo(() => {
     const filtered = rawAsks.filter((l) => l.price >= bestAsk);
-    return groupByTick(filtered, tickSize, 'ask');
-  }, [rawAsks, tickSize, bestAsk]);
+    return groupByTick(filtered, effectiveTickSize, 'ask');
+  }, [rawAsks, effectiveTickSize, bestAsk]);
 
   const allBidsGrouped = useMemo(
-    () => groupByTick(rawBids, tickSize, 'bid'),
-    [rawBids, tickSize]
+    () => groupByTick(rawBids, effectiveTickSize, 'bid'),
+    [rawBids, effectiveTickSize]
   );
 
   const asks = useMemo(() => [...allAsksGrouped].reverse(), [allAsksGrouped]);
   const bids = allBidsGrouped;
 
-  // Auto-scroll asks to bottom on first data load
   useEffect(() => {
     if (hasAutoScrolled.current || asks.length === 0) return;
     askUpdateCount.current++;
@@ -127,7 +117,6 @@ export function useOrderBookView(): OrderBookViewState {
     }
   }, [asks]);
 
-  // Cumulatives
   const askCumulatives = useMemo(() => cumulativeFromEnd(asks), [asks]);
   const bidCumulatives = useMemo(() => cumulativeFromStart(bids), [bids]);
   const askCumUsd = useMemo(() => cumulativeUsdFromEnd(asks), [asks]);
@@ -135,7 +124,6 @@ export function useOrderBookView(): OrderBookViewState {
   const totalAskDepth = useMemo(() => totalSize(allAsksGrouped), [allAsksGrouped]);
   const totalBidDepth = useMemo(() => totalSize(allBidsGrouped), [allBidsGrouped]);
 
-  // Balance
   const filteredAsks = useMemo(
     () => rawAsks.filter((l) => l.price >= bestAsk),
     [rawAsks, bestAsk]
@@ -171,7 +159,7 @@ export function useOrderBookView(): OrderBookViewState {
     midpoint,
     bidPct,
     isNo,
-    tickSize,
+    tickSize: effectiveTickSize,
     setTickSize,
     venueFilter,
     setVenueFilter: handleSetVenueFilter,

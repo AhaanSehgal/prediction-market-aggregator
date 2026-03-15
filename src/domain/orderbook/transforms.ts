@@ -7,10 +7,6 @@ import {
   asDollars,
 } from './types';
 
-// ---------------------------------------------------------------------------
-// Level transforms — pure functions that operate on MergedPriceLevel arrays
-// ---------------------------------------------------------------------------
-
 export function flipLevels(levels: MergedPriceLevel[]): MergedPriceLevel[] {
   return levels.map((l) => ({
     ...l,
@@ -83,10 +79,6 @@ export function groupByTick(
     : result.sort((a, b) => a.price - b.price);
 }
 
-// ---------------------------------------------------------------------------
-// Book-level transforms — pure functions on MergedOrderBook
-// ---------------------------------------------------------------------------
-
 export function uncrossBook(book: MergedOrderBook): MergedOrderBook {
   const MAX_DISTANCE = 0.15;
   const bestBid = book.bids.length > 0 ? book.bids[0].price : 0;
@@ -142,10 +134,6 @@ export function flipBook(book: MergedOrderBook): MergedOrderBook {
         : null,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Cumulative helpers — pure array computations
-// ---------------------------------------------------------------------------
 
 export function cumulativeFromEnd(levels: MergedPriceLevel[]): number[] {
   const cum = new Array<number>(levels.length);
