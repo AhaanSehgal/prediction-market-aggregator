@@ -6,10 +6,6 @@ import { useQuoteStore } from '@/stores/quote-store';
 import { calculateQuote } from '@/domain/orderbook/quote-engine';
 import { QuoteResult } from '@/domain/orderbook/types';
 
-/**
- * Hook that calculates a quote based on the current order book
- * and the user's input (dollar amount + side).
- */
 export function useQuote(): QuoteResult | null {
   const mergedBook = useOrderBookStore((s) => s.mergedBook);
   const dollarAmount = useQuoteStore((s) => s.dollarAmount);

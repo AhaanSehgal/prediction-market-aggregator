@@ -40,15 +40,10 @@ function statusLabel(state: ConnectionState): { text: string; color: string } {
   }
 }
 
-/**
- * Per-venue connection indicators with logos + explicit "Live" / "Offline" labels.
- * Sits in the market sub-header.
- */
 export function VenueStatus() {
   const connections = useConnectionHealth();
   const venues = Object.keys(connections) as VenueId[];
 
-  // Show skeletons until at least one venue has connected once
   const anyEverConnected = venues.some(
     (v) => connections[v].lastMessageAt !== null
   );
@@ -104,9 +99,6 @@ export function VenueStatus() {
   );
 }
 
-/**
- * Minimal footer — online/offline network indicator.
- */
 export function NetworkFooter() {
   const allConnected = useAreAllVenuesConnected();
 

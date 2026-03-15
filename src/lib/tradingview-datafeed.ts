@@ -30,8 +30,6 @@ type SymbolInfo = {
   format: string;
 };
 
-// ── Helpers ──────────────────────────────────────────────────────
-
 interface PricePoint { t: number; p: number; }
 
 function resToFidelity(r: string): number {
@@ -40,7 +38,6 @@ function resToFidelity(r: string): number {
 function resToSecs(r: string): number {
   switch (r) { case '1': return 60; case '15': return 900; case '60': return 3600; case '1D': case 'D': return 86400; default: return 3600; }
 }
-// ── API fetchers ─────────────────────────────────────────────────
 
 async function fetchPolyHistory(tokenId: string, from: number, to: number, fidelity: number): Promise<PricePoint[]> {
   const resp = await fetch(`/api/prices-history?market=${tokenId}&startTs=${from}&endTs=${to}&fidelity=${fidelity}`);
@@ -71,23 +68,17 @@ function ptsToCandles(points: PricePoint[], candleSecs: number): Bar[] {
   return bars;
 }
 
-// ── Venue config ─────────────────────────────────────────────────
-
-// Earliest timestamp for this market (July 18, 2025) — prevents infinite backward pagination
 const MARKET_EARLIEST_TS = 1752883200;
 
 const polyInfo = DEFAULT_MARKET.venueInfo.find((v) => v.venue === 'polymarket');
 const POLY_TOKEN = polyInfo?.tokenId ?? '';
 
-// ── Datafeed ─────────────────────────────────────────────────────
-
-/** Invert a bar's OHLC for the NO outcome (100 - price). */
 function invertBar(bar: Bar): Bar {
   return {
     time: bar.time,
     open: +(100 - bar.open).toFixed(1),
-    high: +(100 - bar.low).toFixed(1),   // inverted: old low → new high
-    low: +(100 - bar.high).toFixed(1),    // inverted: old high → new low
+    high: +(100 - bar.low).toFixed(1),
+    low: +(100 - bar.high).toFixed(1),
     close: +(100 - bar.close).toFixed(1),
     volume: bar.volume,
   };
@@ -153,7 +144,6 @@ export function createDatafeed(invertPrices = false) {
         let bars = ptsToCandles(pts, resToSecs(resolution));
         if (invertPrices) bars = bars.map(invertBar);
 
-        // Filter to requested range
         bars = bars.filter((b) => b.time >= from * 1000 && b.time <= to * 1000);
 
         if (bars.length > 0) {
@@ -164,7 +154,6 @@ export function createDatafeed(invertPrices = false) {
         const reachedStart = earliestBar <= MARKET_EARLIEST_TS + 86400;
         onResult(bars, { noData: bars.length === 0 || reachedStart });
       } catch (err) {
-        console.warn('getBars error:', err);
         onError(String(err));
       }
     },
@@ -217,7 +206,6 @@ export function createDatafeed(invertPrices = false) {
           lastBar = newBar;
           onTick(newBar);
         } catch {
-          // Next poll will retry
         }
       }, pollMs);
 

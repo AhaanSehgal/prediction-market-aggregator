@@ -15,10 +15,6 @@ export interface PolymarketSocketCallbacks {
   onStateChange: (state: ConnectionState) => void;
 }
 
-/**
- * Polymarket-specific WebSocket connection.
- * Subscribes to a specific token's order book channel and normalizes incoming data.
- */
 export class PolymarketSocket {
   private manager: WebSocketManager;
   private tokenId: string;
@@ -34,12 +30,11 @@ export class PolymarketSocket {
       onMessage: this.handleMessage.bind(this),
       onStateChange: (state) => {
         this.callbacks.onStateChange(state);
-        // Re-subscribe on reconnect
         if (state.status === 'connected' && !this.subscribed) {
           this.subscribe();
         }
       },
-      heartbeatIntervalMs: 15_000, // Detect stale connections within ~30s
+      heartbeatIntervalMs: 15_000,
     });
   }
 
@@ -62,12 +57,9 @@ export class PolymarketSocket {
   }
 
   private handleMessage(data: unknown): void {
-    // Polymarket sends different message types
     const msg = data as Record<string, unknown>;
 
-    // Handle book snapshot or update
     if (msg && typeof msg === 'object') {
-      // The WS sends updates that look like book snapshots with bids/asks arrays
       const bookData = this.extractBookData(msg);
       if (bookData) {
         const normalized = normalizePolymarketBook(bookData);
@@ -77,13 +69,7 @@ export class PolymarketSocket {
   }
 
   private extractBookData(msg: Record<string, unknown>): PolymarketBookSnapshot | null {
-    // Polymarket WS can send different formats:
-    // 1. Direct book: { bids: [...], asks: [...] }
-    // 2. Wrapped: { market: TOKEN_ID, ... book data }
-    // 3. Array of events
-
     if (Array.isArray(msg)) {
-      // Process last event in batch
       for (let i = (msg as Record<string, unknown>[]).length - 1; i >= 0; i--) {
         const result = this.extractBookData((msg as Record<string, unknown>[])[i]);
         if (result) return result;
@@ -98,7 +84,6 @@ export class PolymarketSocket {
       };
     }
 
-    // Some messages contain nested book data
     if ('book' in msg && msg.book && typeof msg.book === 'object') {
       return this.extractBookData(msg.book as Record<string, unknown>);
     }

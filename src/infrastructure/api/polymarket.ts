@@ -6,10 +6,6 @@ import {
 
 const CLOB_BASE_URL = 'https://clob.polymarket.com';
 
-/**
- * Fetches the initial order book snapshot from Polymarket's REST API.
- * No authentication required for public order book data.
- */
 export async function fetchPolymarketBook(
   tokenId: string
 ): Promise<NormalizedOrderBook> {
@@ -25,9 +21,6 @@ export async function fetchPolymarketBook(
   return normalizePolymarketBook(data, Date.now());
 }
 
-/**
- * Fetches midpoint price for a token from Polymarket.
- */
 export async function fetchPolymarketMidpoint(
   tokenId: string
 ): Promise<number | null> {

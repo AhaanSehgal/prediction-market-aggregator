@@ -10,7 +10,6 @@ import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
 const MAX_LEVELS = 12;
 const TICK_OPTIONS = [0.1, 0.2, 0.5, 1, 2];
 
-/** Compact format for large numbers: 1,234 → 1,234 | 12,345 → 12.3K | 1,234,567 → 1.23M */
 function fmtCompact(n: number, prefix = ''): string {
   if (n >= 1_000_000) return `${prefix}${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 100_000) return `${prefix}${(n / 1_000).toFixed(1)}K`;
@@ -57,11 +56,6 @@ function groupByTick(levels: MergedPriceLevel[], tickCents: number, side: 'bid' 
     : result.sort((a, b) => a.price - b.price);
 }
 
-/**
- * Depth bar with venue-colored gradient.
- * Uses a smooth gradient blending venue brand colors to show the mix.
- * Single-venue rows tint the standard side color with the venue color.
- */
 function DepthBar({
   level,
   barWidthPct,
@@ -76,7 +70,6 @@ function DepthBar({
   const sideColor = side === 'bid' ? 'rgba(0, 192, 118, 0.13)' : 'rgba(255, 77, 106, 0.13)';
 
   if (level.venues.length <= 1) {
-    // Single venue: side-colored bar with subtle venue tint blended in
     const venueColor = VENUE_COLORS[level.venues[0]?.venue ?? 'polymarket'];
     return (
       <div
@@ -89,8 +82,6 @@ function DepthBar({
     );
   }
 
-  // Multiple venues: gradient that transitions from one venue color to the other
-  // Proportional to each venue's contribution
   const sorted = [...level.venues].sort((a, b) => b.size - a.size);
   const dominantPct = (sorted[0].size / level.totalSize) * 100;
   const c1 = VENUE_COLORS[sorted[0].venue];
@@ -107,8 +98,6 @@ function DepthBar({
   );
 }
 
-
-/** Venue breakdown tooltip shown on hover — uses fixed positioning to escape overflow containers */
 function VenueTooltip({ level, side, anchorRef }: { level: MergedPriceLevel; side: 'bid' | 'ask'; anchorRef: React.RefObject<HTMLDivElement | null> }) {
   const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
 
@@ -179,7 +168,6 @@ function VenueTooltip({ level, side, anchorRef }: { level: MergedPriceLevel; sid
   );
 }
 
-/** Single order book row with tooltip support */
 function OrderRow({
   level,
   side,
@@ -223,7 +211,6 @@ function OrderRow({
   );
 }
 
-/** Flip a book for the NO outcome: bids become asks at (1-price), asks become bids at (1-price). */
 function flipLevels(levels: MergedPriceLevel[]): MergedPriceLevel[] {
   return levels.map((l) => ({
     ...l,
@@ -234,7 +221,6 @@ function flipLevels(levels: MergedPriceLevel[]): MergedPriceLevel[] {
 
 type VenueFilter = 'all' | 'polymarket' | 'kalshi';
 
-/** Filter merged levels to only include a specific venue's liquidity */
 function filterByVenue(levels: MergedPriceLevel[], venue: VenueFilter): MergedPriceLevel[] {
   if (venue === 'all') return levels;
   return levels
@@ -255,23 +241,26 @@ export function OrderBookPanel() {
   const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
   const [tickSize, setTickSize] = useState(0.1);
   const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [tickDropdownOpen, setTickDropdownOpen] = useState(false);
+  const [venueDropdownOpen, setVenueDropdownOpen] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const tickDropdownRef = useRef<HTMLDivElement>(null);
+  const venueDropdownRef = useRef<HTMLDivElement>(null);
   const asksScrollRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
+      if (tickDropdownRef.current && !tickDropdownRef.current.contains(e.target as Node)) {
+        setTickDropdownOpen(false);
+      }
+      if (venueDropdownRef.current && !venueDropdownRef.current.contains(e.target as Node)) {
+        setVenueDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // When NO is selected, flip the book: YES bids → NO asks (at 1-price) and vice versa
   const isNo = selectedOutcome === 'no';
 
   const rawAsks = useMemo(() => {
@@ -288,9 +277,7 @@ export function OrderBookPanel() {
     return filterByVenue(source, venueFilter);
   }, [mergedBook.bids, mergedBook.asks, isNo, venueFilter]);
 
-  // Filter out crossed levels: find the true uncrossed spread first
   const bestBid = rawBids.length > 0 ? rawBids[0].price : 0;
-  // Best ask must be ABOVE best bid (skip crossed asks)
   const bestAsk = useMemo(() => {
     for (const l of rawAsks) {
       if (l.price > bestBid) return l.price;
@@ -298,7 +285,6 @@ export function OrderBookPanel() {
     return 1;
   }, [rawAsks, bestBid]);
 
-  // Group ALL levels first (for total depth), then slice for display
   const allAsksGrouped = useMemo(() => {
     const filtered = rawAsks.filter((l) => l.price >= bestAsk);
     return groupByTick(filtered, tickSize, 'ask');
@@ -311,25 +297,20 @@ export function OrderBookPanel() {
   const asks = useMemo(() => [...allAsksGrouped].reverse(), [allAsksGrouped]);
   const bids = useMemo(() => allBidsGrouped, [allBidsGrouped]);
 
-  // Auto-scroll asks to bottom once data has stabilized (wait for 2+ updates)
   const hasAutoScrolled = useRef(false);
   const askUpdateCount = useRef(0);
   useEffect(() => {
     if (hasAutoScrolled.current || asks.length === 0) return;
     askUpdateCount.current++;
-    // Wait for at least 2 data updates so the book is fuller
     if (askUpdateCount.current >= 2 && asksScrollRef.current) {
       asksScrollRef.current.scrollTop = asksScrollRef.current.scrollHeight;
       hasAutoScrolled.current = true;
     }
   }, [asks]);
 
-  // Cumulative shares from spread outward: bottom of asks list (closest to spread) accumulates upward
   const askCumulatives = useMemo(() => {
     const cum: number[] = new Array(asks.length);
     let total = 0;
-    // asks is reversed: index 0 = furthest (99.9¢), last = closest to spread
-    // Accumulate from closest to spread → furthest
     for (let i = asks.length - 1; i >= 0; i--) {
       total += asks[i].totalSize;
       cum[i] = total;
@@ -347,7 +328,6 @@ export function OrderBookPanel() {
     return cum;
   }, [bids]);
 
-  // Scale bars against TOTAL depth across ALL levels (not just visible 12)
   const totalAskDepth = useMemo(() => {
     let total = 0;
     for (const l of allAsksGrouped) total += l.totalSize;
@@ -360,7 +340,6 @@ export function OrderBookPanel() {
     return Math.max(total, 1);
   }, [allBidsGrouped]);
 
-  // Cumulative USD from the spread outward — matches Fireplace
   const askCumUsd = useMemo(() => {
     const cum: number[] = new Array(asks.length);
     let total = 0;
@@ -381,7 +360,6 @@ export function OrderBookPanel() {
     return cum;
   }, [bids]);
 
-  // B/S ratio uses filtered book (excluding crossed levels), weighted by USD value
   const filteredAsks = useMemo(
     () => rawAsks.filter((l) => l.price >= bestAsk),
     [rawAsks, bestAsk]
@@ -396,22 +374,45 @@ export function OrderBookPanel() {
   );
   const bidPct = bidTotal + askTotal > 0 ? Math.round((bidTotal / (bidTotal + askTotal)) * 100) : 50;
 
-  // Spread from uncrossed best bid/ask
   const spreadValue = bestAsk - bestBid;
   const midpoint = (bestAsk + bestBid) / 2;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-3 h-9 border-b border-border shrink-0">
         <span className="text-[13px] font-medium text-foreground whitespace-nowrap">
           Order Book <span className="text-muted">({isNo ? 'No' : 'Yes'})</span>
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Tick size dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative" ref={venueDropdownRef}>
             <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+              onClick={() => setVenueDropdownOpen(!venueDropdownOpen)}
+              className="flex items-center gap-1 px-2 py-0.5 bg-surface-2 border border-border rounded text-[11px] font-mono text-muted-light cursor-pointer hover:bg-surface-3 transition-colors"
+            >
+              {venueFilter === 'all' ? 'All' : venueFilter === 'polymarket' ? 'Polymarket' : 'Kalshi'}
+              <svg className="w-3 h-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {venueDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded shadow-lg z-50 min-w-[80px]">
+                {(['all', 'polymarket', 'kalshi'] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => { setVenueFilter(v); setVenueDropdownOpen(false); }}
+                    className={`block w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
+                      v === venueFilter ? 'text-foreground bg-surface-3' : 'text-muted-light hover:bg-surface-3'
+                    }`}
+                  >
+                    {v === 'all' ? 'All' : v === 'polymarket' ? 'Polymarket' : 'Kalshi'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={tickDropdownRef}>
+            <button
+              onClick={() => setTickDropdownOpen(!tickDropdownOpen)}
               className="flex items-center gap-1 px-2 py-0.5 bg-surface-2 border border-border rounded text-[11px] font-mono text-muted-light cursor-pointer hover:bg-surface-3 transition-colors"
             >
               {tickSize}¢
@@ -419,12 +420,12 @@ export function OrderBookPanel() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {dropdownOpen && (
+            {tickDropdownOpen && (
               <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded shadow-lg z-50 min-w-[60px]">
                 {TICK_OPTIONS.map((t) => (
                   <button
                     key={t}
-                    onClick={() => { setTickSize(t); setDropdownOpen(false); }}
+                    onClick={() => { setTickSize(t); setTickDropdownOpen(false); }}
                     className={`block w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
                       t === tickSize ? 'text-foreground bg-surface-3' : 'text-muted-light hover:bg-surface-3'
                     }`}
@@ -438,24 +439,6 @@ export function OrderBookPanel() {
         </div>
       </div>
 
-      {/* Venue filter */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border shrink-0">
-        {(['all', 'polymarket', 'kalshi'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setVenueFilter(v)}
-            className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
-              venueFilter === v
-                ? 'bg-surface-3 text-foreground'
-                : 'text-muted hover:text-muted-light hover:bg-surface-2'
-            }`}
-          >
-            {v === 'all' ? 'All' : v === 'polymarket' ? 'Polymarket' : 'Kalshi'}
-          </button>
-        ))}
-      </div>
-
-      {/* Bid/Ask balance */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
         <span className="text-[11px] font-mono text-bid">B {bidPct}%</span>
         <div className="flex-1 flex h-[4px] rounded-full overflow-hidden">
@@ -465,7 +448,6 @@ export function OrderBookPanel() {
         <span className="text-[11px] font-mono text-ask">{100 - bidPct}% S</span>
       </div>
 
-      {/* Column headers */}
       <div
         className="grid px-3 py-1 items-center text-[10px] font-mono text-muted border-b border-border shrink-0"
         style={{ gridTemplateColumns: '52px 1fr 80px' }}
@@ -475,7 +457,6 @@ export function OrderBookPanel() {
         <span className="text-right">Total (USD)</span>
       </div>
 
-      {/* Order book rows */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         {asks.length === 0 && bids.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-muted text-[11px] font-mono">
@@ -483,7 +464,6 @@ export function OrderBookPanel() {
           </div>
         ) : (
           <>
-            {/* Asks */}
             <div className="flex-1 flex flex-col justify-end overflow-hidden">
               <div ref={asksScrollRef} className="overflow-y-auto">
                 {asks.map((level, i) => (
@@ -500,7 +480,6 @@ export function OrderBookPanel() {
               </div>
             </div>
 
-            {/* Spread */}
             <div className="flex items-center justify-between px-3 h-6 border-y border-border bg-surface-2 shrink-0">
               <span className="text-[11px] font-mono text-muted">Spread</span>
               <div className="flex items-center gap-2 text-[11px] font-mono">
@@ -519,7 +498,6 @@ export function OrderBookPanel() {
               </div>
             </div>
 
-            {/* Bids */}
             <div className="flex-1 overflow-y-auto">
               {bids.map((level, i) => (
                 <OrderRow

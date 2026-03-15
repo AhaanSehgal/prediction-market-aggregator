@@ -9,16 +9,9 @@ import {
 import { mergeOrderBooks, emptyMergedBook } from '@/domain/orderbook/aggregator';
 
 interface OrderBookState {
-  // Per-venue raw books
   venueBooks: Record<VenueId, NormalizedOrderBook | null>;
-
-  // Merged (aggregated) book
   mergedBook: MergedOrderBook;
-
-  // Connection status per venue
   connections: Record<VenueId, VenueConnection>;
-
-  // Actions
   updateVenueBook: (venue: VenueId, book: NormalizedOrderBook) => void;
   updateConnectionState: (venue: VenueId, state: ConnectionState) => void;
   clearVenueBook: (venue: VenueId) => void;

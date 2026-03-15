@@ -10,15 +10,12 @@ import {
   asDollars,
 } from './types';
 
-const PRICE_PRECISION = 4; // Round to 4 decimal places for grouping
+const PRICE_PRECISION = 4;
 
 function roundPrice(price: number): number {
   return Math.round(price * 10 ** PRICE_PRECISION) / 10 ** PRICE_PRECISION;
 }
 
-/**
- * Groups price levels by rounded price, summing sizes and tracking venue contributions.
- */
 function mergeLevels(levels: NormalizedPriceLevel[]): MergedPriceLevel[] {
   const grouped = new Map<number, VenueLiquidityContribution[]>();
 
@@ -26,7 +23,6 @@ function mergeLevels(levels: NormalizedPriceLevel[]): MergedPriceLevel[] {
     const key = roundPrice(level.price);
     const existing = grouped.get(key);
     if (existing) {
-      // Check if venue already has an entry at this level
       const venueEntry = existing.find((v) => v.venue === level.venue);
       if (venueEntry) {
         venueEntry.size = asDollars(venueEntry.size + level.size);
@@ -45,10 +41,6 @@ function mergeLevels(levels: NormalizedPriceLevel[]): MergedPriceLevel[] {
   }));
 }
 
-/**
- * Merges order books from multiple venues into a single aggregated book.
- * Pure function — no side effects.
- */
 export function mergeOrderBooks(
   ...books: NormalizedOrderBook[]
 ): MergedOrderBook {
@@ -64,7 +56,13 @@ export function mergeOrderBooks(
   const mergedAsks = mergeLevels(allAsks).sort((a, b) => a.price - b.price);
 
   const bestBid = mergedBids.length > 0 ? mergedBids[0].price : null;
-  const bestAsk = mergedAsks.length > 0 ? mergedAsks[0].price : null;
+  let bestAsk: Probability | null = null;
+  for (const ask of mergedAsks) {
+    if (bestBid === null || ask.price > bestBid) {
+      bestAsk = ask.price;
+      break;
+    }
+  }
 
   let spread: number | null = null;
   let midpoint: Probability | null = null;
@@ -84,9 +82,6 @@ export function mergeOrderBooks(
   };
 }
 
-/**
- * Creates an empty merged order book.
- */
 export function emptyMergedBook(): MergedOrderBook {
   return {
     bids: [],

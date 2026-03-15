@@ -12,17 +12,6 @@ import {
   asDollars,
 } from './types';
 
-/**
- * Calculates a quote by walking the order book.
- *
- * For a BUY: `amount` is dollars to spend. Walks asks (lowest first), buying shares.
- *   - At price P, spending D dollars buys D/P shares.
- *
- * For a SELL: `amount` is shares to sell. Walks bids (highest first), selling shares.
- *   - At price P, selling S shares yields S*P dollars.
- *
- * Pure function — no side effects.
- */
 export function calculateQuote(
   orderBook: MergedOrderBook,
   amount: number,
@@ -47,7 +36,6 @@ export function calculateQuote(
       if (remaining <= 0) break;
 
       if (side === 'buy') {
-        // Buying: spend dollars to get shares
         const maxCostAtLevel = venueContrib.size * level.price;
         const costAtLevel = Math.min(remaining, maxCostAtLevel);
         const sharesAtLevel = costAtLevel / level.price;
@@ -63,8 +51,6 @@ export function calculateQuote(
         totalShares += sharesAtLevel;
         totalCost += costAtLevel;
       } else {
-        // Selling: amount is shares to sell
-        // Available shares at this level from this venue
         const sharesAtLevel = Math.min(remaining, venueContrib.size);
         const dollarsAtLevel = sharesAtLevel * level.price;
 
@@ -82,7 +68,6 @@ export function calculateQuote(
     }
   }
 
-  // Calculate venue summaries
   const venueMap = new Map<VenueId, { shares: number; cost: number }>();
   for (const fill of fills) {
     const existing = venueMap.get(fill.venue) ?? { shares: 0, cost: 0 };
@@ -100,7 +85,6 @@ export function calculateQuote(
     })
   );
 
-  // Price impact: difference between first and last fill price
   const priceImpact =
     fills.length >= 2
       ? Math.abs(fills[fills.length - 1].price - fills[0].price)

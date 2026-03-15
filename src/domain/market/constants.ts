@@ -1,9 +1,6 @@
 import { Market } from './types';
 import { asProbability } from '../orderbook/types';
 
-// JD Vance 2028 Presidential Election market
-// Polymarket token ID sourced from their public CLOB API
-// Kalshi ticker follows their standard political market format
 export const DEFAULT_MARKET: Market = {
   id: 'jd-vance-2028-president',
   title: 'Will JD Vance win the 2028 US Presidential Election?',
@@ -29,8 +26,8 @@ export const DEFAULT_MARKET: Market = {
 };
 
 export const VENUE_COLORS = {
-  polymarket: '#7C5CFC',  // Purple
-  kalshi: '#3B82F6',      // Blue
+  polymarket: '#7C5CFC',
+  kalshi: '#3B82F6',
 } as const;
 
 export const VENUE_LABELS = {

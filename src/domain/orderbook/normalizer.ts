@@ -5,7 +5,6 @@ import {
   asDollars,
 } from './types';
 
-// ─── Raw Polymarket types ───────────────────────────────────────
 interface PolymarketBookEntry {
   price: string;
   size: string;
@@ -17,15 +16,11 @@ export interface PolymarketBookSnapshot {
   timestamp?: string;
 }
 
-// ─── Raw Kalshi types ───────────────────────────────────────────
-// Kalshi API returns [price_string, quantity_string] tuples in dollars (0.01-0.99)
 export interface KalshiBookSnapshot {
   yes_dollars: [string, string][];
   no_dollars: [string, string][];
 }
 
-// ─── Polymarket Normalizer ──────────────────────────────────────
-// Polymarket prices are 0–1 (probability), sizes in USDC
 export function normalizePolymarketBook(
   raw: PolymarketBookSnapshot,
   timestamp?: number
@@ -56,16 +51,10 @@ export function normalizePolymarketBook(
   };
 }
 
-// ─── Kalshi Normalizer ──────────────────────────────────────────
-// Kalshi `orderbook_fp` returns dollar amounts, not contract counts.
-// Convert dollars → shares: shares = dollars / price_per_contract.
 export function normalizeKalshiBook(
   raw: KalshiBookSnapshot,
   timestamp?: number
 ): NormalizedOrderBook {
-  // yes_dollars = YES bids: [price_in_dollars, quantity_in_cents]
-  // _fp quantities are in cents → divide by 100 to get real dollars
-  // Then shares = dollars / yes_price
   const bids: NormalizedPriceLevel[] = (raw.yes_dollars || [])
     .map(([priceStr, centStr]) => {
       const price = parseFloat(priceStr);
@@ -79,9 +68,6 @@ export function normalizeKalshiBook(
     .filter((level) => level.size > 0 && level.price > 0 && level.price < 1)
     .sort((a, b) => b.price - a.price);
 
-  // no_dollars = NO bids → YES asks at (1 - no_price)
-  // _fp quantities are in cents → divide by 100 to get real dollars
-  // Then shares = dollars / no_price
   const asks: NormalizedPriceLevel[] = (raw.no_dollars || [])
     .map(([priceStr, centStr]) => {
       const noPrice = parseFloat(priceStr);

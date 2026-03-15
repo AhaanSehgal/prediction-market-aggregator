@@ -48,7 +48,6 @@ export function DepthChart() {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    // Background
     ctx.fillStyle = '#131316';
     ctx.fillRect(0, 0, w, h);
 
@@ -80,7 +79,6 @@ export function DepthChart() {
     const px = (price: number) => PAD.left + ((price - minPrice) / priceRange) * chartW;
     const py = (size: number) => PAD.top + chartH - (size / maxCum) * chartH;
 
-    // Grid lines (subtle)
     ctx.strokeStyle = '#1e1e22';
     ctx.lineWidth = 0.5;
     for (let i = 1; i <= 3; i++) {
@@ -91,7 +89,6 @@ export function DepthChart() {
       ctx.stroke();
     }
 
-    // Step chart style (like a real depth chart)
     function drawStepArea(
       points: { price: number; cumSize: number }[],
       fillColor: string,
@@ -103,20 +100,17 @@ export function DepthChart() {
       ctx.beginPath();
 
       if (direction === 'bid') {
-        // Bids: draw right to left (highest price first)
         ctx.moveTo(px(points[0].price), py(0));
         for (let i = 0; i < points.length; i++) {
           const x = px(points[i].price);
           const y = py(points[i].cumSize);
           if (i > 0) {
-            // Horizontal step first
             ctx.lineTo(x, py(points[i - 1].cumSize));
           }
           ctx.lineTo(x, y);
         }
         ctx.lineTo(px(points[points.length - 1].price), py(0));
       } else {
-        // Asks: draw left to right (lowest price first)
         ctx.moveTo(px(points[0].price), py(0));
         for (let i = 0; i < points.length; i++) {
           const x = px(points[i].price);
@@ -133,7 +127,6 @@ export function DepthChart() {
       ctx.fillStyle = fillColor;
       ctx.fill();
 
-      // Stroke the top edge only
       ctx.beginPath();
       if (direction === 'bid') {
         ctx.moveTo(px(points[0].price), py(points[0].cumSize));
@@ -156,7 +149,6 @@ export function DepthChart() {
     drawStepArea(bidPoints, 'rgba(0, 192, 118, 0.12)', '#00c076', 'bid');
     drawStepArea(askPoints, 'rgba(255, 77, 106, 0.12)', '#ff4d6a', 'ask');
 
-    // Midpoint line
     if (mergedBook.midpoint !== null) {
       const midX = px(mergedBook.midpoint);
       ctx.beginPath();
@@ -169,7 +161,6 @@ export function DepthChart() {
       ctx.setLineDash([]);
     }
 
-    // X-axis labels
     ctx.fillStyle = '#5a5a66';
     ctx.font = '9px monospace';
     ctx.textAlign = 'center';
@@ -179,7 +170,6 @@ export function DepthChart() {
       ctx.fillText(`${(price * 100).toFixed(0)}¢`, px(price), h - 4);
     }
 
-    // Y-axis labels
     ctx.textAlign = 'right';
     for (let i = 0; i <= 3; i++) {
       const size = (maxCum / 3) * i;

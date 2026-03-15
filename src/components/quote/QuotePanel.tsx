@@ -10,14 +10,12 @@ import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
 import { MergedOrderBook, MergedPriceLevel, asProbability, asDollars } from '@/domain/orderbook/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 
-/** Remove crossed levels and distant stale orders from a merged book */
 function uncrossBook(book: MergedOrderBook): MergedOrderBook {
-  const MAX_DISTANCE = 0.15; // 15¢ from best bid/ask
+  const MAX_DISTANCE = 0.15;
   const bestBid = book.bids.length > 0 ? book.bids[0].price : 0;
   const uncrossedAsks = book.asks.filter((l) => l.price > bestBid);
   const bestAsk = uncrossedAsks.length > 0 ? uncrossedAsks[0].price : null;
 
-  // Filter out distant stale limit orders
   const cleanAsks = bestAsk !== null
     ? uncrossedAsks.filter((l) => l.price <= bestAsk + MAX_DISTANCE)
     : uncrossedAsks;
@@ -35,7 +33,6 @@ function uncrossBook(book: MergedOrderBook): MergedOrderBook {
   };
 }
 
-/** Flip a merged book for NO outcome: bids↔asks, prices become 1-price */
 function flipBook(book: MergedOrderBook): MergedOrderBook {
   const flipLevels = (levels: MergedPriceLevel[]): MergedPriceLevel[] =>
     levels.map((l) => ({
@@ -75,19 +72,16 @@ export function QuotePanel() {
   const isNo = selectedOutcome === 'no';
   const outcomeLabel = isNo ? 'No' : 'Yes';
 
-  // Current price for this outcome
   const currentPrice = useMemo(() => {
     if (yesPrice === null) return null;
     return isNo ? 1 - yesPrice : yesPrice;
   }, [yesPrice, isNo]);
 
-  // Get the right book orientation for this outcome, with crossed levels removed
   const effectiveBook = useMemo(() => {
     if (!isNo) return uncrossBook(mergedBook);
     return flipBook(mergedBook);
   }, [mergedBook, isNo]);
 
-  // Calculate quote — buy uses dollars, sell uses shares
   const quote = useMemo(() => {
     if (inputAmount <= 0) return null;
     return calculateQuote(effectiveBook, inputAmount, side);
@@ -100,14 +94,11 @@ export function QuotePanel() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Allow empty, digits, and one decimal point
     if (val === '' || /^\d*\.?\d*$/.test(val)) {
       setInputValue(val);
     }
   };
 
-  // Buy: payout = shares (each pays $1 if you win), profit = shares - cost
-  // Sell: you receive = totalCost (dollars from selling shares)
   const potentialPayout = quote ? (isBuy ? quote.totalShares : quote.totalCost) : 0;
   const potentialProfit = quote ? (isBuy ? quote.totalShares - quote.totalCost : 0) : 0;
 
@@ -119,7 +110,6 @@ export function QuotePanel() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {/* Buy / Sell tabs */}
       <div className="grid grid-cols-2 border-b border-border shrink-0">
         <button
           onClick={() => setSide('buy')}
@@ -143,7 +133,6 @@ export function QuotePanel() {
         </button>
       </div>
 
-      {/* Outcome indicator */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
         <span className="text-[13px] text-muted-light">Outcome</span>
         <span className={`text-[13px] font-medium ${isNo ? 'text-ask' : 'text-bid'}`}>
@@ -158,7 +147,6 @@ export function QuotePanel() {
         </span>
       </div>
 
-      {/* Amount input */}
       <div className="px-3 py-2.5 border-b border-border shrink-0">
         <label className="text-[12px] text-muted mb-1.5 block">
           {isBuy ? 'Amount (USD)' : 'Shares to sell'}
@@ -177,7 +165,6 @@ export function QuotePanel() {
         </div>
       </div>
 
-      {/* Quick amounts */}
       <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-border shrink-0">
         {QUICK_AMOUNTS.map((amt) => (
           <button
@@ -190,10 +177,8 @@ export function QuotePanel() {
         ))}
       </div>
 
-      {/* Quote result */}
       {quote && quote.totalShares > 0 ? (
         <>
-          {/* Fill details */}
           <div className="px-3 py-2.5 border-b border-border shrink-0 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-muted-light">
@@ -229,13 +214,11 @@ export function QuotePanel() {
             )}
           </div>
 
-          {/* Venue breakdown */}
           {quote.venueSummaries.length > 0 && (
             <div className="px-3 py-2.5 border-b border-border shrink-0">
               <span className="text-[11px] text-muted uppercase tracking-wide mb-2 block">
                 Fill Split
               </span>
-              {/* Bar */}
               <div className="flex h-[6px] rounded-full overflow-hidden mb-2">
                 {quote.venueSummaries.map((vs) => (
                   <div
@@ -248,7 +231,6 @@ export function QuotePanel() {
                   />
                 ))}
               </div>
-              {/* Details */}
               {quote.venueSummaries.map((vs) => (
                 <div key={vs.venue} className="flex items-center justify-between py-0.5">
                   <div className="flex items-center gap-1.5">
@@ -280,7 +262,6 @@ export function QuotePanel() {
         </div>
       ) : null}
 
-      {/* Summary */}
       <div className="px-3 py-2.5 space-y-2 border-b border-border shrink-0">
         {isBuy ? (
           <>
@@ -329,7 +310,6 @@ export function QuotePanel() {
         </div>
       </div>
 
-      {/* Trade button */}
       <div className="px-3 py-3 shrink-0">
         <button
           disabled={!quote || quote.totalShares <= 0}
@@ -343,7 +323,6 @@ export function QuotePanel() {
         </button>
       </div>
 
-      {/* Footer */}
       <div className="px-3 pb-3 text-center shrink-0">
         <span className="text-[11px] text-muted">
           Quote only - no real orders placed.{' '}

@@ -11,8 +11,8 @@ declare global {
   }
 }
 
-const PURPLE = '#a855f7';   // Polymarket line
-const CYAN = '#38bdf8';     // Kalshi line
+const PURPLE = '#a855f7';
+const CYAN = '#38bdf8';
 const GREEN = '#00c076';
 const RED = '#ff4d6a';
 const BG = '#131316';
@@ -40,12 +40,10 @@ export function PriceChart() {
     return () => {};
   }, []);
 
-  // Re-create widget when outcome changes
   useEffect(() => {
     if (!ready || !containerRef.current) return;
     if (!window.TradingView?.widget) return;
 
-    // Clean up previous widget
     setChartReady(false);
     if (widgetRef.current) {
       widgetRef.current.remove();
@@ -63,7 +61,7 @@ export function PriceChart() {
       locale: 'en',
       custom_font_family: "'Satoshi', sans-serif",
       theme: 'dark',
-      style: 2, // Line chart
+      style: 2,
       autosize: true,
       toolbar_bg: BG,
       loading_screen: { backgroundColor: BG, foregroundColor: PURPLE },
@@ -76,40 +74,29 @@ export function PriceChart() {
         'paneProperties.vertGridProperties.color': GRID,
         'paneProperties.horzGridProperties.color': GRID,
         'paneProperties.separatorColor': BORDER,
-
         'scalesProperties.backgroundColor': BG,
         'scalesProperties.textColor': TEXT_DIM,
         'scalesProperties.lineColor': BORDER,
         'scalesProperties.fontSize': 11,
-
-        // Area style
         'mainSeriesProperties.areaStyle.color1': 'rgba(168, 85, 247, 0.28)',
         'mainSeriesProperties.areaStyle.color2': 'rgba(168, 85, 247, 0.0)',
         'mainSeriesProperties.areaStyle.linecolor': PURPLE,
         'mainSeriesProperties.areaStyle.linewidth': 2,
         'mainSeriesProperties.areaStyle.priceSource': 'close',
         'mainSeriesProperties.areaStyle.transparency': 0,
-
-        // Line style
         'mainSeriesProperties.lineStyle.color': PURPLE,
         'mainSeriesProperties.lineStyle.linewidth': 2,
         'mainSeriesProperties.lineStyle.priceSource': 'close',
-
-        // Candle
         'mainSeriesProperties.candleStyle.upColor': GREEN,
         'mainSeriesProperties.candleStyle.downColor': RED,
         'mainSeriesProperties.candleStyle.borderUpColor': GREEN,
         'mainSeriesProperties.candleStyle.borderDownColor': RED,
         'mainSeriesProperties.candleStyle.wickUpColor': GREEN + '80',
         'mainSeriesProperties.candleStyle.wickDownColor': RED + '80',
-
         'mainSeriesProperties.priceLineColor': PURPLE,
         'mainSeriesProperties.priceLineWidth': 1,
-
         'paneProperties.crossHairProperties.color': '#5a5a6680',
         'paneProperties.crossHairProperties.style': 2,
-
-        // Hide the on-chart legend overlay (symbol name, OHLC values)
         'paneProperties.legendProperties.showLegend': false,
         'paneProperties.legendProperties.showSeriesTitle': false,
         'paneProperties.legendProperties.showSeriesOHLC': false,
@@ -174,9 +161,9 @@ export function PriceChart() {
           'scalesProperties.backgroundColor': BG,
           'mainSeriesProperties.lineStyle.color': PURPLE,
         });
-      } catch { /* noop */ }
+      } catch {}
 
-      try { chart.setChartType(2); } catch { /* noop */ }
+      try { chart.setChartType(2); } catch {}
 
       chart.createStudy('Volume', true, false, undefined, undefined, {
         'color.0': RED,
@@ -203,7 +190,6 @@ export function PriceChart() {
         </div>
       )}
       <div ref={containerRef} className="absolute inset-0" style={{ backgroundColor: BG }} />
-      {/* Gradient overlay — hue-blends purple→cyan onto the bright chart line only */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{

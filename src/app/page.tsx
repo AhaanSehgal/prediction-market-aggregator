@@ -8,17 +8,12 @@ import { OrderBookPanel } from '@/components/orderbook/OrderBookPanel';
 import { QuotePanel } from '@/components/quote/QuotePanel';
 import { useOrderBook } from '@/hooks/useOrderBook';
 
-/**
- * Creates a full-screen overlay during drag to prevent iframes (TradingView)
- * from swallowing mouse events. Also listens for blur to handle edge cases.
- */
 function startDrag(
   axis: 'x' | 'y',
   startPos: number,
   cursorStyle: string,
   onDrag: (delta: number) => void,
 ) {
-  // Overlay blocks iframe from stealing events
   const overlay = document.createElement('div');
   overlay.style.cssText = `position:fixed;inset:0;z-index:99999;cursor:${cursorStyle}`;
   document.body.appendChild(overlay);
@@ -45,7 +40,7 @@ function startDrag(
 
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', cleanup);
-  window.addEventListener('blur', cleanup); // handles alt-tab, losing focus, etc.
+  window.addEventListener('blur', cleanup);
 }
 
 function RowDragHandle({ onDrag }: { onDrag: (delta: number) => void }) {
@@ -107,7 +102,6 @@ export default function Home() {
 
   const handleColDrag = useCallback((deltaX: number) => {
     setObWidth((prev) => {
-      // Dragging right = shrink order book, dragging left = grow order book
       const next = prev - deltaX;
       return Math.max(200, Math.min(450, next));
     });
@@ -116,34 +110,26 @@ export default function Home() {
   return (
     <AppShell>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] h-full">
-        {/* Left mega column */}
         <div ref={containerRef} className="flex flex-col h-full overflow-hidden border-r border-border">
-          {/* Top area: chart | handle | order book */}
           <div className="flex-1 min-h-0 flex overflow-hidden">
-            {/* Chart */}
             <div className="flex-1 min-w-0 overflow-hidden">
               <PriceChart />
             </div>
-            {/* Vertical drag handle */}
             <div className="hidden lg:flex">
               <ColDragHandle onDrag={handleColDrag} />
             </div>
-            {/* Order Book */}
             <div className="hidden lg:block shrink-0 overflow-hidden" style={{ width: obWidth }}>
               <OrderBookPanel />
             </div>
           </div>
 
-          {/* Horizontal drag handle */}
           <RowDragHandle onDrag={handleRowDrag} />
 
-          {/* Bottom tabs — resizable */}
           <div className="shrink-0 overflow-hidden" style={{ height: bottomHeight }}>
             <TabBar />
           </div>
         </div>
 
-        {/* Right: Trade panel — full height */}
         <div className="hidden lg:flex flex-col bg-surface overflow-hidden">
           <QuotePanel />
         </div>

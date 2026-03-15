@@ -9,10 +9,6 @@ export interface WebSocketManagerConfig {
   maxReconnectDelay?: number;
 }
 
-/**
- * Generic reconnecting WebSocket with exponential backoff and heartbeat detection.
- * Handles connect, disconnect, reconnect, and stale connection detection.
- */
 export class WebSocketManager {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -33,7 +29,6 @@ export class WebSocketManager {
   connect(): void {
     this.intentionalClose = false;
     this.cleanup();
-
     this.config.onStateChange({ status: 'connecting' });
 
     try {
@@ -57,13 +52,10 @@ export class WebSocketManager {
         const data = JSON.parse(event.data as string);
         this.config.onMessage(data);
       } catch {
-        // Non-JSON message (ping/pong frames), ignore
       }
     };
 
-    this.ws.onerror = () => {
-      // onerror is always followed by onclose, so we handle reconnect there
-    };
+    this.ws.onerror = () => {};
 
     this.ws.onclose = (event: CloseEvent) => {
       this.stopHeartbeatCheck();
@@ -126,7 +118,6 @@ export class WebSocketManager {
     this.stopHeartbeatCheck();
     this.heartbeatTimer = setInterval(() => {
       const staleDuration = Date.now() - this.lastMessageAt;
-      // If no message received in 2x heartbeat interval, consider stale
       if (staleDuration > this.heartbeatIntervalMs * 2) {
         this.ws?.close(4000, 'Stale connection');
       }

@@ -7,20 +7,13 @@ import {
   KalshiBookSnapshot,
 } from '@/domain/orderbook/normalizer';
 
-const POLL_INTERVAL_MS = 3000; // Poll every 3 seconds
+const POLL_INTERVAL_MS = 3000;
 
 export interface KalshiSocketCallbacks {
   onBookUpdate: (book: NormalizedOrderBook) => void;
   onStateChange: (state: ConnectionState) => void;
 }
 
-/**
- * Kalshi "socket" that polls the public REST API for order book updates.
- *
- * Kalshi's WebSocket requires authentication, so we poll the public
- * elections API instead. This provides near-real-time updates every 3s.
- * Implements the same interface as a real WebSocket would for easy swapping.
- */
 export class KalshiSocket {
   private callbacks: KalshiSocketCallbacks;
   private ticker: string;
@@ -36,11 +29,7 @@ export class KalshiSocket {
   connect(): void {
     this.callbacks.onStateChange({ status: 'connecting' });
     this.connected = true;
-
-    // Initial fetch
     this.fetchBook();
-
-    // Start polling
     this.pollInterval = setInterval(() => {
       if (this.connected) {
         this.fetchBook();
@@ -76,7 +65,6 @@ export class KalshiSocket {
       this.callbacks.onBookUpdate(normalized);
     } catch (err) {
       this.consecutiveErrors++;
-      console.warn(`Kalshi fetch error (${this.consecutiveErrors}):`, err);
 
       if (this.consecutiveErrors >= 3) {
         this.callbacks.onStateChange({

@@ -6,10 +6,6 @@ import {
   KalshiBookSnapshot,
 } from '@/domain/orderbook/normalizer';
 
-/**
- * Fetches the real Kalshi order book for a given market ticker.
- * Routes through our Next.js API proxy to avoid CORS issues in production.
- */
 export async function fetchKalshiBook(
   ticker: string
 ): Promise<NormalizedOrderBook> {
