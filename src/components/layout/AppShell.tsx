@@ -10,6 +10,29 @@ import { Skeleton } from '@/components/ui/Skeleton';
 
 const NAV_LINKS = ['Discover', 'Portfolio', 'Wallet Tracker', 'Leaderboard', 'Watchlist', 'Referrals'];
 
+function VenueBreakdownBadge({ poly, kalshi }: { poly: string | null; kalshi: string | null }) {
+  if (!poly && !kalshi) return null;
+  return (
+    <span className="text-[9px] text-muted flex items-center gap-0.5">
+      (
+      {poly && (
+        <span className="inline-flex items-center gap-0.5">
+          <img src="/polymarket-logo.png" alt="P" className="w-2.5 h-2.5 rounded-[2px] shrink-0" />
+          {poly}
+        </span>
+      )}
+      {poly && kalshi && <span>/</span>}
+      {kalshi && (
+        <span className="inline-flex items-center gap-0.5">
+          <img src="/kalshi-logo.png" alt="K" className="w-3.5 h-3.5 rounded-[2px] object-contain shrink-0" />
+          {kalshi}
+        </span>
+      )}
+      )
+    </span>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
   const setSelectedOutcome = useQuoteStore((s) => s.setSelectedOutcome);
@@ -123,20 +146,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-muted text-[10px]">24h Volume</span>
-              <span className="text-muted-light">{s.volume24h}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-light">{s.volume24h}</span>
+                <VenueBreakdownBadge poly={s.breakdown.volume24h.polymarket} kalshi={s.breakdown.volume24h.kalshi} />
+              </div>
             </div>
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-muted text-[10px]">Total Volume</span>
-              <span className="text-muted-light">{s.totalVolume}</span>
-            </div>
-            <div className="flex flex-col items-start gap-0.5">
-              <span className="text-muted text-[10px]">Liquidity</span>
-              <span className="text-muted-light">{s.liquidity}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-light">{s.totalVolume}</span>
+                <VenueBreakdownBadge poly={s.breakdown.totalVolume.polymarket} kalshi={s.breakdown.totalVolume.kalshi} />
+              </div>
             </div>
           </div>
         ) : (
           <div className="hidden lg:flex items-center gap-8 shrink-0">
-            {['Expires', '24h Change', '24h Volume', 'Total Volume', 'Liquidity'].map((label) => (
+            {['Expires', '24h Change', '24h Volume', 'Total Volume'].map((label) => (
               <div key={label} className="flex flex-col items-start gap-1">
                 <span className="text-muted text-[10px] font-mono">{label}</span>
                 <Skeleton className="w-14 h-3.5 rounded" />

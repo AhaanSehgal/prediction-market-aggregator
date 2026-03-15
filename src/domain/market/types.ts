@@ -9,8 +9,9 @@ export interface Outcome {
 export interface VenueMarketInfo {
   venue: VenueId;
   marketId: string;
-  tokenId?: string;      // Polymarket uses token IDs for each outcome
-  ticker?: string;       // Kalshi uses tickers
+  tokenId?: string;
+  ticker?: string;
+  seriesTicker?: string;
 }
 
 export interface Market {

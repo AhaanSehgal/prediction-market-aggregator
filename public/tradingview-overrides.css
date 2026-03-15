@@ -93,3 +93,12 @@ body, html {
 .chart-markup-table .pane-separator {
   background-color: #222226 !important;
 }
+
+/* Ensure legend is visible with no background */
+[class*="legend"],
+[class*="Legend"] {
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}

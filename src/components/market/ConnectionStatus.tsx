@@ -5,9 +5,9 @@ import { VENUE_LABELS } from '@/domain/market/constants';
 import { VenueId, ConnectionState } from '@/domain/orderbook/types';
 import { Skeleton } from '@/components/ui/Skeleton';
 
-const VENUE_LOGOS: Record<VenueId, string> = {
-  polymarket: '/polymarket-logo.png',
-  kalshi: '/kalshi-logo.png',
+const VENUE_LOGOS: Record<VenueId, { src: string; className: string }> = {
+  polymarket: { src: '/polymarket-logo.png', className: 'w-3 h-3 rounded-[3px]' },
+  kalshi: { src: '/kalshi-logo.png', className: 'w-4 h-4 rounded-[3px] object-contain' },
 };
 
 function statusDotColor(state: ConnectionState): string {
@@ -72,9 +72,9 @@ export function VenueStatus() {
         return (
           <div key={venue} className="flex items-center gap-1.5">
             <img
-              src={VENUE_LOGOS[venue]}
+              src={VENUE_LOGOS[venue].src}
               alt={VENUE_LABELS[venue]}
-              className="w-3.5 h-3.5 rounded-[3px] object-cover"
+              className={`${VENUE_LOGOS[venue].className} shrink-0`}
             />
             <span className="text-[10px] text-muted-light">
               {VENUE_LABELS[venue]}

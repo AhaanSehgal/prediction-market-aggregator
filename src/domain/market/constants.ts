@@ -20,6 +20,7 @@ export const DEFAULT_MARKET: Market = {
       venue: 'kalshi',
       marketId: 'KXPRESPERSON-28-JVAN',
       ticker: 'KXPRESPERSON-28-JVAN',
+      seriesTicker: 'KXPRESPERSON',
     },
   ],
   expiresAt: '2028-11-05T00:00:00Z',

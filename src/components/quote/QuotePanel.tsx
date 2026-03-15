@@ -34,6 +34,8 @@ function uncrossBook(book: MergedOrderBook): MergedOrderBook {
 }
 
 function flipBook(book: MergedOrderBook): MergedOrderBook {
+  const clean = uncrossBook(book);
+
   const flipLevels = (levels: MergedPriceLevel[]): MergedPriceLevel[] =>
     levels.map((l) => ({
       ...l,
@@ -41,18 +43,20 @@ function flipBook(book: MergedOrderBook): MergedOrderBook {
       venues: l.venues.map((v) => ({ ...v })),
     }));
 
-  const flippedBids = flipLevels(book.asks).sort((a, b) => b.price - a.price);
-  const flippedAsks = flipLevels(book.bids).sort((a, b) => a.price - b.price);
+  const flippedBids = flipLevels(clean.asks).sort((a, b) => b.price - a.price);
+  const flippedAsks = flipLevels(clean.bids).sort((a, b) => a.price - b.price);
 
-  return uncrossBook({
-    ...book,
+  const bestBid = flippedBids.length > 0 ? flippedBids[0].price : null;
+  const bestAsk = flippedAsks.length > 0 ? flippedAsks[0].price : null;
+
+  return {
     bids: flippedBids,
     asks: flippedAsks,
-    bestBid: null,
-    bestAsk: null,
-    spread: null,
-    midpoint: null,
-  });
+    bestBid: bestBid !== null ? asProbability(bestBid) : null,
+    bestAsk: bestAsk !== null ? asProbability(bestAsk) : null,
+    spread: bestBid !== null && bestAsk !== null ? bestAsk - bestBid : null,
+    midpoint: bestBid !== null && bestAsk !== null ? asProbability((bestAsk + bestBid) / 2) : null,
+  };
 }
 
 const QUICK_AMOUNTS = [10, 50, 200, 1000];

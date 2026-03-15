@@ -8,7 +8,8 @@ import { MergedPriceLevel, asProbability, asDollars } from '@/domain/orderbook/t
 import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
 
 const MAX_LEVELS = 12;
-const TICK_OPTIONS = [0.1, 0.2, 0.5, 1, 2];
+const TICK_OPTIONS_ALL = [0.1, 0.2, 0.5, 1, 2];
+const TICK_OPTIONS_KALSHI = [1, 2];
 
 function fmtCompact(n: number, prefix = ''): string {
   if (n >= 1_000_000) return `${prefix}${(n / 1_000_000).toFixed(2)}M`;
@@ -184,15 +185,32 @@ function OrderRow({
   setHoveredRow: (key: string | null) => void;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
+  const prevSize = useRef(level.totalSize);
+  const [flash, setFlash] = useState(false);
+
+  useEffect(() => {
+    if (prevSize.current !== level.totalSize) {
+      prevSize.current = level.totalSize;
+      setFlash(true);
+      const id = setTimeout(() => setFlash(false), 400);
+      return () => clearTimeout(id);
+    }
+  }, [level.totalSize]);
+
   const rowKey = `${side === 'bid' ? 'b' : 'a'}-${level.price}`;
   const isHovered = hoveredRow === rowKey;
   const priceColor = side === 'bid' ? 'text-bid' : 'text-ask';
+  const flashColor = side === 'bid' ? 'rgba(0, 192, 118, 0.15)' : 'rgba(255, 77, 106, 0.15)';
 
   return (
     <div
       ref={rowRef}
       key={rowKey}
       className="relative h-[22px] flex items-center text-[11px] font-mono cursor-default hover:bg-white/[0.03]"
+      style={{
+        backgroundColor: flash ? flashColor : undefined,
+        transition: flash ? 'none' : 'background-color 400ms ease-out',
+      }}
       onMouseEnter={() => setHoveredRow(rowKey)}
       onMouseLeave={() => setHoveredRow(null)}
     >
@@ -241,6 +259,7 @@ export function OrderBookPanel() {
   const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
   const [tickSize, setTickSize] = useState(0.1);
   const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
+  const tickOptions = venueFilter === 'kalshi' ? TICK_OPTIONS_KALSHI : TICK_OPTIONS_ALL;
   const [tickDropdownOpen, setTickDropdownOpen] = useState(false);
   const [venueDropdownOpen, setVenueDropdownOpen] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
@@ -399,7 +418,11 @@ export function OrderBookPanel() {
                 {(['all', 'polymarket', 'kalshi'] as const).map((v) => (
                   <button
                     key={v}
-                    onClick={() => { setVenueFilter(v); setVenueDropdownOpen(false); }}
+                    onClick={() => {
+                      setVenueFilter(v);
+                      setVenueDropdownOpen(false);
+                      if (v === 'kalshi' && tickSize < 1) setTickSize(1);
+                    }}
                     className={`block w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
                       v === venueFilter ? 'text-foreground bg-surface-3' : 'text-muted-light hover:bg-surface-3'
                     }`}
@@ -422,7 +445,7 @@ export function OrderBookPanel() {
             </button>
             {tickDropdownOpen && (
               <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded shadow-lg z-50 min-w-[60px]">
-                {TICK_OPTIONS.map((t) => (
+                {tickOptions.map((t) => (
                   <button
                     key={t}
                     onClick={() => { setTickSize(t); setTickDropdownOpen(false); }}

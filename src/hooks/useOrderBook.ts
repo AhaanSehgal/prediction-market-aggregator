@@ -11,7 +11,7 @@ import { DEFAULT_MARKET } from '@/domain/market/constants';
 const POLY_POLL_MS = 5_000;
 
 export function useOrderBook() {
-  const { mergedBook, updateVenueBook, updateConnectionState } =
+  const { mergedBook, updateVenueBook, updateConnectionState, setLivePrice } =
     useOrderBookStore();
 
   const polySocketRef = useRef<PolymarketSocket | null>(null);
@@ -43,6 +43,7 @@ export function useOrderBook() {
       const polySocket = new PolymarketSocket(tokenId, {
         onBookUpdate: (book) => updateVenueBook('polymarket', book),
         onStateChange: (state) => updateConnectionState('polymarket', state),
+        onPriceChange: (data) => setLivePrice(data.price),
       });
       polySocket.connect();
       polySocketRef.current = polySocket;

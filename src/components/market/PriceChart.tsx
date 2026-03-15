@@ -97,14 +97,16 @@ export function PriceChart() {
         'mainSeriesProperties.priceLineWidth': 1,
         'paneProperties.crossHairProperties.color': '#5a5a6680',
         'paneProperties.crossHairProperties.style': 2,
-        'paneProperties.legendProperties.showLegend': false,
-        'paneProperties.legendProperties.showSeriesTitle': false,
-        'paneProperties.legendProperties.showSeriesOHLC': false,
+        'paneProperties.legendProperties.showBackground': true,
+        'paneProperties.legendProperties.backgroundTransparency': 100,
+        'paneProperties.legendProperties.showLegend': true,
+        'paneProperties.legendProperties.showSeriesTitle': true,
+        'paneProperties.legendProperties.showSeriesOHLC': true,
         'paneProperties.legendProperties.showStudyTitles': false,
         'paneProperties.legendProperties.showStudyValues': false,
         'paneProperties.legendProperties.showStudyArguments': false,
-        'paneProperties.legendProperties.showBarChange': false,
-        'paneProperties.legendProperties.showVolume': true,
+        'paneProperties.legendProperties.showBarChange': true,
+        'paneProperties.legendProperties.showVolume': false,
       },
       studies_overrides: {
         'volume.volume.color.0': RED,
@@ -160,6 +162,10 @@ export function PriceChart() {
           'paneProperties.backgroundGradientEndColor': BG,
           'scalesProperties.backgroundColor': BG,
           'mainSeriesProperties.lineStyle.color': PURPLE,
+          'paneProperties.legendProperties.showLegend': true,
+          'paneProperties.legendProperties.showSeriesTitle': true,
+          'paneProperties.legendProperties.showSeriesOHLC': true,
+          'paneProperties.legendProperties.showBarChange': true,
         });
       } catch {}
 

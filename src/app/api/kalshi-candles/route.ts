@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const startTs = sp.get('start_ts') || '';
   const endTs = sp.get('end_ts') || '';
   const interval = sp.get('period_interval') || '60';
+
   const resp = await fetch(
     `${KALSHI}/series/${series}/markets/${ticker}/candlesticks?start_ts=${startTs}&end_ts=${endTs}&period_interval=${interval}`
   );

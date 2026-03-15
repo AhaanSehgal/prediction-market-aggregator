@@ -1,4 +1,5 @@
 import { DEFAULT_MARKET } from '@/domain/market/constants';
+import { useOrderBookStore } from '@/stores/orderbook-store';
 
 type Bar = {
   time: number;
@@ -33,15 +34,20 @@ type SymbolInfo = {
 interface PricePoint { t: number; p: number; }
 
 function resToFidelity(r: string): number {
-  switch (r) { case '1': return 1; case '15': return 5; case '60': return 60; case '1D': case 'D': return 1440; default: return 60; }
+  switch (r) { case '1': return 1; case '15': return 5; case '60': return 60; case '1D': case 'D': return 60; default: return 60; }
 }
 function resToSecs(r: string): number {
   switch (r) { case '1': return 60; case '15': return 900; case '60': return 3600; case '1D': case 'D': return 86400; default: return 3600; }
 }
 
+const polyInfo = DEFAULT_MARKET.venueInfo.find((v) => v.venue === 'polymarket');
+const POLY_TOKEN = polyInfo?.tokenId ?? '';
+
+const MARKET_EARLIEST_TS = 1752883200;
+
 async function fetchPolyHistory(tokenId: string, from: number, to: number, fidelity: number): Promise<PricePoint[]> {
   const resp = await fetch(`/api/prices-history?market=${tokenId}&startTs=${from}&endTs=${to}&fidelity=${fidelity}`);
-  if (!resp.ok) throw new Error(`Polymarket history: ${resp.status}`);
+  if (!resp.ok) return [];
   const data = await resp.json();
   return (data.history || []) as PricePoint[];
 }
@@ -60,32 +66,27 @@ function ptsToCandles(points: PricePoint[], candleSecs: number): Bar[] {
     const px = pts.map((p) => p.p * 100);
     bars.push({
       time: k * 1000,
-      open: +px[0].toFixed(1), high: +Math.max(...px).toFixed(1),
-      low: +Math.min(...px).toFixed(1), close: +px[px.length - 1].toFixed(1),
+      open: +px[0].toFixed(2), high: +Math.max(...px).toFixed(2),
+      low: +Math.min(...px).toFixed(2), close: +px[px.length - 1].toFixed(2),
       volume: pts.length,
     });
   }
   return bars;
 }
 
-const MARKET_EARLIEST_TS = 1752883200;
-
-const polyInfo = DEFAULT_MARKET.venueInfo.find((v) => v.venue === 'polymarket');
-const POLY_TOKEN = polyInfo?.tokenId ?? '';
-
 function invertBar(bar: Bar): Bar {
   return {
     time: bar.time,
-    open: +(100 - bar.open).toFixed(1),
-    high: +(100 - bar.low).toFixed(1),
-    low: +(100 - bar.high).toFixed(1),
-    close: +(100 - bar.close).toFixed(1),
+    open: +(100 - bar.open).toFixed(2),
+    high: +(100 - bar.low).toFixed(2),
+    low: +(100 - bar.high).toFixed(2),
+    close: +(100 - bar.close).toFixed(2),
     volume: bar.volume,
   };
 }
 
 export function createDatafeed(invertPrices = false) {
-  const subscribers = new Map<string, ReturnType<typeof setInterval>>();
+  const subscribers = new Map<string, () => void>();
   let lastBar: Bar | null = null;
 
   return {
@@ -113,7 +114,7 @@ export function createDatafeed(invertPrices = false) {
         exchange: '',
         listed_exchange: '',
         minmov: 1,
-        pricescale: 10,
+        pricescale: 100,
         has_intraday: true,
         has_daily: true,
         has_weekly_and_monthly: false,
@@ -140,8 +141,8 @@ export function createDatafeed(invertPrices = false) {
       }
 
       try {
-        const pts = await fetchPolyHistory(POLY_TOKEN, from, to, resToFidelity(resolution));
-        let bars = ptsToCandles(pts, resToSecs(resolution));
+        const polyPts = await fetchPolyHistory(POLY_TOKEN, from, to, resToFidelity(resolution));
+        let bars = ptsToCandles(polyPts, resToSecs(resolution));
         if (invertPrices) bars = bars.map(invertBar);
 
         bars = bars.filter((b) => b.time >= from * 1000 && b.time <= to * 1000);
@@ -166,55 +167,51 @@ export function createDatafeed(invertPrices = false) {
       _onResetCacheNeeded: () => void
     ) => {
       const resSecs = resToSecs(resolution);
-      const pollMs = resolution === '1' ? 5000 : resolution === '15' ? 10000 : 15000;
 
-      const id = setInterval(async () => {
-        try {
-          const resp = await fetch(`/api/midpoint?token_id=${POLY_TOKEN}`);
-          if (!resp.ok) return;
-          const data = await resp.json();
-          if (!data.mid) return;
-          let priceCents = +(parseFloat(data.mid) * 100).toFixed(1);
-          if (invertPrices) priceCents = +(100 - priceCents).toFixed(1);
+      let prevPrice: number | null = null;
+      const unsubscribe = useOrderBookStore.subscribe((state) => {
+        const price = state.livePrice;
+        if (price === null || price === prevPrice) return;
+        prevPrice = price;
+        let priceCents = +(price * 100).toFixed(2);
+        if (invertPrices) priceCents = +(100 - priceCents).toFixed(2);
 
-          const lb = lastBar;
-          if (!lb) return;
+        const lb = lastBar;
+        if (!lb) return;
 
-          const now = Math.floor(Date.now() / 1000);
-          const barTime = Math.floor(now / resSecs) * resSecs * 1000;
+        const now = Math.floor(Date.now() / 1000);
+        const barTime = Math.floor(now / resSecs) * resSecs * 1000;
 
-          let newBar: Bar;
-          if (barTime === lb.time) {
-            newBar = {
-              ...lb,
-              close: priceCents,
-              high: +Math.max(lb.high, priceCents).toFixed(1),
-              low: +Math.min(lb.low, priceCents).toFixed(1),
-              volume: lb.volume + 1,
-            };
-          } else {
-            newBar = {
-              time: barTime,
-              open: lb.close,
-              high: +Math.max(lb.close, priceCents).toFixed(1),
-              low: +Math.min(lb.close, priceCents).toFixed(1),
-              close: priceCents,
-              volume: 1,
-            };
-          }
-
-          lastBar = newBar;
-          onTick(newBar);
-        } catch {
+        let newBar: Bar;
+        if (barTime === lb.time) {
+          newBar = {
+            ...lb,
+            close: priceCents,
+            high: +Math.max(lb.high, priceCents).toFixed(2),
+            low: +Math.min(lb.low, priceCents).toFixed(2),
+            volume: lb.volume + 1,
+          };
+        } else {
+          newBar = {
+            time: barTime,
+            open: lb.close,
+            high: +Math.max(lb.close, priceCents).toFixed(2),
+            low: +Math.min(lb.close, priceCents).toFixed(2),
+            close: priceCents,
+            volume: 1,
+          };
         }
-      }, pollMs);
 
-      subscribers.set(listenerGuid, id);
+        lastBar = newBar;
+        onTick(newBar);
+      });
+
+      subscribers.set(listenerGuid, unsubscribe);
     },
 
     unsubscribeBars: (listenerGuid: string) => {
-      const id = subscribers.get(listenerGuid);
-      if (id) { clearInterval(id); subscribers.delete(listenerGuid); }
+      const unsub = subscribers.get(listenerGuid);
+      if (unsub) { unsub(); subscribers.delete(listenerGuid); }
     },
   };
 }

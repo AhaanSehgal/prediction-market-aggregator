@@ -12,9 +12,11 @@ interface OrderBookState {
   venueBooks: Record<VenueId, NormalizedOrderBook | null>;
   mergedBook: MergedOrderBook;
   connections: Record<VenueId, VenueConnection>;
+  livePrice: number | null;
   updateVenueBook: (venue: VenueId, book: NormalizedOrderBook) => void;
   updateConnectionState: (venue: VenueId, state: ConnectionState) => void;
   clearVenueBook: (venue: VenueId) => void;
+  setLivePrice: (price: number) => void;
 }
 
 function remerge(books: Record<VenueId, NormalizedOrderBook | null>): MergedOrderBook {
@@ -32,6 +34,7 @@ export const useOrderBookStore = create<OrderBookState>((set) => ({
   },
 
   mergedBook: emptyMergedBook(),
+  livePrice: null,
 
   connections: {
     polymarket: {
@@ -81,4 +84,6 @@ export const useOrderBookStore = create<OrderBookState>((set) => ({
         mergedBook: remerge(venueBooks),
       };
     }),
+
+  setLivePrice: (price) => set({ livePrice: price }),
 }));

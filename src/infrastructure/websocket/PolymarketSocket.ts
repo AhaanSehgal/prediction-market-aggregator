@@ -10,9 +10,17 @@ import {
 
 const POLYMARKET_WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
 
+export interface PriceChangeData {
+  price: number;
+  bestBid: number;
+  bestAsk: number;
+  timestamp: number;
+}
+
 export interface PolymarketSocketCallbacks {
   onBookUpdate: (book: NormalizedOrderBook) => void;
   onStateChange: (state: ConnectionState) => void;
+  onPriceChange?: (data: PriceChangeData) => void;
 }
 
 export class PolymarketSocket {
@@ -58,14 +66,37 @@ export class PolymarketSocket {
 
   private handleMessage(data: unknown): void {
     const msg = data as Record<string, unknown>;
+    if (!msg || typeof msg !== 'object') return;
 
-    if (msg && typeof msg === 'object') {
-      const bookData = this.extractBookData(msg);
-      if (bookData) {
-        const normalized = normalizePolymarketBook(bookData);
-        this.callbacks.onBookUpdate(normalized);
-      }
+    if (msg.event_type === 'price_change' && this.callbacks.onPriceChange) {
+      this.handlePriceChange(msg);
+      return;
     }
+
+    const bookData = this.extractBookData(msg);
+    if (bookData) {
+      const normalized = normalizePolymarketBook(bookData);
+      this.callbacks.onBookUpdate(normalized);
+    }
+  }
+
+  private handlePriceChange(msg: Record<string, unknown>): void {
+    const changes = msg.price_changes as Array<Record<string, string>> | undefined;
+    if (!changes) return;
+
+    const match = changes.find((c) => c.asset_id === this.tokenId);
+    if (!match) return;
+
+    const bestBid = parseFloat(match.best_bid || '0');
+    const bestAsk = parseFloat(match.best_ask || '0');
+    const midpoint = bestBid > 0 && bestAsk > 0 ? (bestBid + bestAsk) / 2 : parseFloat(match.price || '0');
+
+    this.callbacks.onPriceChange!({
+      price: midpoint,
+      bestBid,
+      bestAsk,
+      timestamp: parseInt(msg.timestamp as string, 10) || Date.now(),
+    });
   }
 
   private extractBookData(msg: Record<string, unknown>): PolymarketBookSnapshot | null {

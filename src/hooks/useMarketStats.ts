@@ -6,6 +6,11 @@ import { DEFAULT_MARKET } from '@/domain/market/constants';
 const KALSHI_TICKER =
   DEFAULT_MARKET.venueInfo.find((v) => v.venue === 'kalshi')?.ticker ?? '';
 
+export interface VenueBreakdown {
+  polymarket: number;
+  kalshi: number;
+}
+
 export interface MarketStats {
   expiresAt: string;
   change24h: number | null;
@@ -13,12 +18,23 @@ export interface MarketStats {
   totalVolume: number | null;
   openInterest: number | null;
   liquidity: number | null;
+  breakdown: {
+    volume24h: VenueBreakdown;
+    totalVolume: VenueBreakdown;
+    liquidity: VenueBreakdown;
+  };
 }
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toFixed(0);
+}
+
+function fmtBreakdown(b: VenueBreakdown, prefix = '') {
+  const p = b.polymarket > 0 ? `${prefix}${fmt(b.polymarket)}` : null;
+  const k = b.kalshi > 0 ? `${prefix}${fmt(b.kalshi)}` : null;
+  return { polymarket: p, kalshi: k };
 }
 
 export function formatStats(s: MarketStats) {
@@ -36,6 +52,11 @@ export function formatStats(s: MarketStats) {
     totalVolume: s.totalVolume !== null ? fmt(s.totalVolume) : '—',
     openInterest: s.openInterest !== null ? fmt(s.openInterest) : '—',
     liquidity: s.liquidity !== null ? `$${fmt(s.liquidity)}` : '—',
+    breakdown: {
+      volume24h: fmtBreakdown(s.breakdown.volume24h),
+      totalVolume: fmtBreakdown(s.breakdown.totalVolume),
+      liquidity: fmtBreakdown(s.breakdown.liquidity, '$'),
+    },
   };
 }
 
@@ -47,6 +68,11 @@ export function useMarketStats(pollMs = 30_000): MarketStats {
     totalVolume: null,
     openInterest: null,
     liquidity: null,
+    breakdown: {
+      volume24h: { polymarket: 0, kalshi: 0 },
+      totalVolume: { polymarket: 0, kalshi: 0 },
+      liquidity: { polymarket: 0, kalshi: 0 },
+    },
   });
 
   useEffect(() => {
@@ -66,34 +92,44 @@ export function useMarketStats(pollMs = 30_000): MarketStats {
 
         const expiresAt = poly?.endDate ?? DEFAULT_MARKET.expiresAt ?? '';
 
+        const fp = (v: unknown) => (typeof v === 'string' ? parseFloat(v) : 0) || 0;
+
         const polyVol24 = poly?.volume24hr ?? 0;
-        const kalshiVol24 = kalshi?.volume_24h_fp ? parseFloat(kalshi.volume_24h_fp) / 100 : 0;
+        const kalshiVol24 = fp(kalshi?.volume_24h_fp);
 
         const polyVolTotal = poly?.volumeNum ?? 0;
+        const kalshiVolTotal = fp(kalshi?.volume_fp);
 
-        const kalshiOI = kalshi?.open_interest_fp ? parseFloat(kalshi.open_interest_fp) / 100 : 0;
-        const oi = kalshiOI > 0 ? kalshiOI : null;
+        const polyLiquidity = poly?.liquidityNum ?? 0;
+        const kalshiLiquidity = fp(kalshi?.liquidity_dollars);
 
-        const liquidity = poly?.liquidityNum ?? null;
+        const kalshiOI = fp(kalshi?.open_interest_fp);
+        const polyOI = poly?.openInterest ?? 0;
 
         let change24h: number | null = null;
-        if (poly?.outcomePrices && kalshi?.previous_price_dollars) {
-          try {
-            const kalshiCurrent = kalshi.last_price_dollars ? parseFloat(kalshi.last_price_dollars) * 100 : null;
-            if (kalshiCurrent !== null) {
-              const prevCents = parseFloat(kalshi.previous_price_dollars) * 100;
-              change24h = kalshiCurrent - prevCents;
-            }
-          } catch {}
+        const polyPrices = poly?.outcomePrices ? JSON.parse(poly.outcomePrices) : null;
+        const polyCurrentCents = polyPrices ? parseFloat(polyPrices[0]) * 100 : null;
+        const kalshiCurrentCents = kalshi?.last_price_dollars ? parseFloat(kalshi.last_price_dollars) * 100 : null;
+        const kalshiPrevCents = kalshi?.previous_price_dollars ? parseFloat(kalshi.previous_price_dollars) * 100 : null;
+
+        if (kalshiCurrentCents !== null && kalshiPrevCents !== null) {
+          change24h = kalshiCurrentCents - kalshiPrevCents;
+        } else if (poly?.previousDayPrice != null && polyCurrentCents !== null) {
+          change24h = polyCurrentCents - parseFloat(poly.previousDayPrice) * 100;
         }
 
         setStats({
           expiresAt,
           change24h,
           volume24h: polyVol24 + kalshiVol24,
-          totalVolume: polyVolTotal,
-          openInterest: oi,
-          liquidity,
+          totalVolume: polyVolTotal + kalshiVolTotal,
+          openInterest: (polyOI + kalshiOI) > 0 ? polyOI + kalshiOI : null,
+          liquidity: (polyLiquidity + kalshiLiquidity) > 0 ? polyLiquidity + kalshiLiquidity : null,
+          breakdown: {
+            volume24h: { polymarket: polyVol24, kalshi: kalshiVol24 },
+            totalVolume: { polymarket: polyVolTotal, kalshi: kalshiVolTotal },
+            liquidity: { polymarket: polyLiquidity, kalshi: kalshiLiquidity },
+          },
         });
       } catch {}
     }
