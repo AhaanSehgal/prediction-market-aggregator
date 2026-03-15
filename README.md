@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-Opens on port 3000. No API keys or environment variables required — all data comes from public market endpoints.
+Opens on port 3000. No API keys or environment variables required - all data comes from public market endpoints.
 
 ---
 
@@ -38,8 +38,8 @@ Opens on port 3000. No API keys or environment variables required — all data c
 - **Automatic reconnection** with exponential backoff (1s base, 30s max) and jitter
 - **Instant reconnect on network recovery**: listens for the browser `online` event, resets backoff, and reconnects immediately instead of waiting for the timer
 - **Heartbeat/stale detection**: if no message arrives within 2× the heartbeat interval (30s for Polymarket), the connection is closed and reconnected
-- **Per-venue connection status pills** in the header — dark cards with colored borders: green border when connected, red when down, neutral when offline. Status dot pulses during connecting/error states
-- If one venue goes down, the other continues to provide data — the order book degrades gracefully to single-venue mode
+- **Per-venue connection status pills** in the header - dark cards with colored borders: green border when connected, red when down, neutral when offline. Status dot pulses during connecting/error states
+- If one venue goes down, the other continues to provide data - the order book degrades gracefully to single-venue mode
 - Footer shows aggregate connection health (Stable/Unstable)
 
 ### 4. Quote Engine
@@ -47,7 +47,7 @@ Opens on port 3000. No API keys or environment variables required — all data c
 - The engine walks the merged order book, filling across both venues at real prices
 - Shows: total shares/cost, average fill price, price impact, venue split breakdown with stacked bar, max payout and potential profit
 - Quick-add buttons (+$10, +$50, +$200, +$1000) for fast amount entry
-- **Uncrossing before flipping**: for NO quotes, the YES book is uncrossed first, then flipped — this prevents Kalshi crossed levels (e.g., YES asks at 15¢) from creating phantom NO bids at 85¢ that would filter out legitimate NO asks
+- **Uncrossing before flipping**: for NO quotes, the YES book is uncrossed first, then flipped - this prevents Kalshi crossed levels (e.g., YES asks at 15¢) from creating phantom NO bids at 85¢ that would filter out legitimate NO asks
 
 ### 5. TradingView Chart
 - Full TradingView charting library with custom datafeed backed by Polymarket CLOB API
@@ -62,7 +62,7 @@ Opens on port 3000. No API keys or environment variables required — all data c
 - Stats bar hidden below `xl` breakpoint to prevent layout overflow
 
 ### 7. Mobile Responsive
-- **Mobile (< 1024px)**: Tab-based navigation (Chart / Order Book / Trade) — all panels accessible, just one at a time
+- **Mobile (< 1024px)**: Tab-based navigation (Chart / Order Book / Trade) - all panels accessible, just one at a time
 - **Desktop (≥ 1024px)**: Full multi-panel layout with draggable resize handles for chart/orderbook column and chart/tabbar row
 - Header, sub-header, YES/NO pills, and buttons all scale with responsive padding and font sizes
 - Drag handles are desktop-only (mouse events); mobile uses full-height panels
@@ -104,7 +104,7 @@ Kalshi REST ─────┘    merge ↑   store      ├─ PriceChart (subs
 1. Venue sockets/pollers receive raw data
 2. Normalizers convert to `NormalizedOrderBook` (consistent price/size format)
 3. Zustand store merges all venue books into a single `MergedOrderBook`
-4. UI components subscribe via selectors — only re-render when their slice changes
+4. UI components subscribe via selectors - only re-render when their slice changes
 
 ---
 
@@ -112,7 +112,7 @@ Kalshi REST ─────┘    merge ↑   store      ├─ PriceChart (subs
 
 **Branded types for domain safety.** `Probability` and `Dollars` are branded number types (`number & { __brand }`) created via assertion functions. This prevents accidentally passing a price where a dollar amount is expected at the type level.
 
-**Venue-agnostic merge layer.** Each venue normalizes its raw API data into a `NormalizedOrderBook`. The merge algorithm is venue-agnostic — adding a third venue would only require a new normalizer and socket adapter.
+**Venue-agnostic merge layer.** Each venue normalizes its raw API data into a `NormalizedOrderBook`. The merge algorithm is venue-agnostic - adding a third venue would only require a new normalizer and socket adapter.
 
 **Uncrossing the merged book.** When two venues are merged, it's possible for Kalshi's YES asks (converted to NO bids) to appear at prices that cross the spread. These are filtered out before display and quoting. For NO outcome views, the YES book is uncrossed *before* flipping to prevent phantom levels.
 
@@ -126,7 +126,7 @@ Kalshi REST ─────┘    merge ↑   store      ├─ PriceChart (subs
 
 **Connection status pills with fixed-width labels.** Status labels use `w-[38px]` fixed width so the pill doesn't resize when status changes between "Live", "Down", "Off", or "Connecting" (which truncates). The pill border color reflects status: green when connected, red when down.
 
-**Zustand for state.** Minimal boilerplate, great React 19 compatibility, and selector-based subscriptions mean components only re-render when their specific slice changes — critical for high-frequency order book updates. The `subscribeBars` datafeed also uses raw Zustand `subscribe()` from non-React code.
+**Zustand for state.** Minimal boilerplate, great React 19 compatibility, and selector-based subscriptions mean components only re-render when their specific slice changes - critical for high-frequency order book updates. The `subscribeBars` datafeed also uses raw Zustand `subscribe()` from non-React code.
 
 **WebSocketManager as a reusable primitive.** Exponential backoff, heartbeat monitoring, reconnection logic, and `online` event handling are encapsulated in a generic `WebSocketManager` class. Venue-specific sockets compose this rather than reimplementing connection management.
 
@@ -137,7 +137,7 @@ Kalshi REST ─────┘    merge ↑   store      ├─ PriceChart (subs
 | Decision | Tradeoff |
 |---|---|
 | Kalshi via REST polling (3s) | No real-time WebSocket without auth keys.|
-| Single hardcoded market | Scope constraint — the architecture supports multiple markets but the UI is single-market. |
+| Single hardcoded market | Scope constraint - the architecture supports multiple markets but the UI is single-market. |
 | No actual order placement | This is a quoting/pricing exercise only, as specified. |
 | TradingView library loaded from `/public` | Avoids npm package issues; the library is self-contained. |
 | Polymarket-only chart data | Kalshi doesn't expose historical candle data publicly without auth. Chart shows Polymarket prices with live WebSocket updates. |
