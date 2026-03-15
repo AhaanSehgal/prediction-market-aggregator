@@ -34,9 +34,9 @@ function statusLabel(state: ConnectionState): { text: string; color: string } {
     case 'connecting':
       return { text: 'Connecting', color: 'text-yellow-500' };
     case 'error':
-      return { text: 'Error', color: 'text-ask' };
+      return { text: 'Down', color: 'text-ask' };
     case 'disconnected':
-      return { text: 'Offline', color: 'text-muted' };
+      return { text: 'Off', color: 'text-muted' };
   }
 }
 
@@ -62,21 +62,31 @@ export function VenueStatus() {
   }
 
   return (
-    <div className="hidden lg:flex items-center gap-4 shrink-0">
+    <div className="hidden lg:flex items-center gap-2.5 shrink-0">
       {venues.map((venue) => {
         const conn = connections[venue];
         const dotColor = statusDotColor(conn.state);
         const pulse = shouldPulse(conn.state);
         const label = statusLabel(conn.state);
 
+        const borderColor = conn.state.status === 'connected'
+          ? 'border-bid/30'
+          : conn.state.status === 'error'
+            ? 'border-ask/30'
+            : 'border-border-light';
+
         return (
-          <div key={venue} className="flex items-center gap-1.5">
+          <div
+            key={venue}
+            title={`${VENUE_LABELS[venue]}: ${label.text}`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border ${borderColor} transition-colors`}
+          >
             <img
               src={VENUE_LOGOS[venue].src}
               alt={VENUE_LABELS[venue]}
               className={`${VENUE_LOGOS[venue].className} shrink-0`}
             />
-            <span className="text-[10px] text-muted-light">
+            <span className="text-[11px] text-muted-light font-medium">
               {VENUE_LABELS[venue]}
             </span>
             <span className="relative flex h-1.5 w-1.5">
@@ -89,7 +99,7 @@ export function VenueStatus() {
                 className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColor}`}
               />
             </span>
-            <span className={`text-[9px] font-mono font-medium ${label.color}`}>
+            <span className={`text-[10px] font-mono font-medium w-[38px] ${label.color}`}>
               {label.text}
             </span>
           </div>

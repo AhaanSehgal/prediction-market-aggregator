@@ -13,7 +13,7 @@ const NAV_LINKS = ['Discover', 'Portfolio', 'Wallet Tracker', 'Leaderboard', 'Wa
 function VenueBreakdownBadge({ poly, kalshi }: { poly: string | null; kalshi: string | null }) {
   if (!poly && !kalshi) return null;
   return (
-    <span className="text-[9px] text-muted flex items-center gap-0.5">
+    <span className="text-[10px] text-muted flex items-center gap-0.5">
       (
       {poly && (
         <span className="inline-flex items-center gap-0.5">
@@ -45,14 +45,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       <LiveTitle />
       {/* Primary nav bar */}
-      <header className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface shrink-0">
-        <div className="flex items-center gap-6">
+      <header className="flex items-center justify-between px-3 md:px-5 py-2 md:py-3 border-b border-border bg-surface shrink-0">
+        <div className="flex items-center gap-4 md:gap-6">
           {/* Logo */}
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[15px]"></span>
-            <span className="text-base font-semibold tracking-tight">
+            <span className="text-sm md:text-base font-semibold tracking-tight">
               <span className="font-bold bg-gradient-to-r from-[#e85d3a] to-[#f0a07c] bg-clip-text text-transparent">Galactic</span><span className="text-white font-bold">.pro</span>
-              <span className="text-muted-light ml-0.5 text-xs font-normal"></span>
             </span>
           </div>
 
@@ -68,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           {/* Search */}
           <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-surface-2 border border-border rounded-md w-52">
             <svg className="w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,32 +78,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Sign In */}
-          <button className="px-4 py-1.5 text-[13px] text-foreground bg-surface-2 border border-border-light rounded-md hover:bg-surface-3 transition-colors">
+          <button className="px-3 md:px-4 py-1.5 text-[12px] md:text-[13px] text-foreground bg-surface-2 border border-border-light rounded-md hover:bg-surface-3 transition-colors">
             Sign In
           </button>
         </div>
       </header>
 
       {/* Market sub-header */}
-      <div className="flex items-center gap-5 px-6 py-3 border-b border-border bg-surface shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-3 md:gap-5 px-3 md:px-6 py-2 md:py-3 border-b border-border bg-surface shrink-0 overflow-x-auto">
         {/* Star + Market title */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button className="text-muted hover:text-foreground transition-colors">
+        <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
+          <button className="text-muted hover:text-foreground transition-colors hidden sm:block">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
             </svg>
           </button>
-          <span className="text-[13px] text-foreground font-medium truncate max-w-sm">
+          <span className="text-[12px] md:text-[14px] text-foreground font-medium truncate max-w-[140px] sm:max-w-sm">
             {DEFAULT_MARKET.title}
           </span>
         </div>
 
         {/* YES/NO pills */}
         {yesPrice !== null && noPrice !== null ? (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
             <button
               onClick={() => setSelectedOutcome('yes')}
-              className={`inline-flex items-center px-4 py-1.5 text-[12px] font-mono font-semibold rounded-md transition-all ${
+              className={`inline-flex items-center px-2.5 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-mono font-semibold rounded-md transition-all ${
                 selectedOutcome === 'yes'
                   ? 'bg-bid text-white shadow-sm'
                   : 'bg-bid/10 text-bid border border-bid/25 hover:bg-bid/20'
@@ -114,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={() => setSelectedOutcome('no')}
-              className={`inline-flex items-center px-4 py-1.5 text-[12px] font-mono font-semibold rounded-md transition-all ${
+              className={`inline-flex items-center px-2.5 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-mono font-semibold rounded-md transition-all ${
                 selectedOutcome === 'no'
                   ? 'bg-ask text-white shadow-sm'
                   : 'bg-ask/10 text-ask border border-ask/25 hover:bg-ask/20'
@@ -125,17 +124,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         ) : (
           <div className="flex items-center gap-2 shrink-0">
-            <Skeleton className="w-[88px] h-[30px] rounded-md" />
-            <Skeleton className="w-[88px] h-[30px] rounded-md" />
+            <Skeleton className="w-[70px] md:w-[88px] h-[28px] md:h-[30px] rounded-md" />
+            <Skeleton className="w-[70px] md:w-[88px] h-[28px] md:h-[30px] rounded-md" />
           </div>
         )}
 
         {/* Divider */}
-        <div className="w-px h-6 bg-border shrink-0" />
+        <div className="hidden md:block w-px h-6 bg-border shrink-0" />
 
         {/* Market stats */}
         {yesPrice !== null ? (
-          <div className="hidden lg:flex items-center gap-8 text-[11px] font-mono shrink-0">
+          <div className="hidden xl:flex items-center gap-6 text-[12px] font-mono whitespace-nowrap shrink-0">
             <div className="flex flex-col items-start gap-0.5">
               <span className="text-muted text-[10px]">Expires</span>
               <span className="text-muted-light">{s.expires}</span>
@@ -160,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         ) : (
-          <div className="hidden lg:flex items-center gap-8 shrink-0">
+          <div className="hidden xl:flex items-center gap-6 shrink-0 whitespace-nowrap">
             {['Expires', '24h Change', '24h Volume', 'Total Volume'].map((label) => (
               <div key={label} className="flex flex-col items-start gap-1">
                 <span className="text-muted text-[10px] font-mono">{label}</span>
@@ -171,14 +170,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Divider */}
-        <div className="hidden lg:block w-px h-6 bg-border shrink-0" />
+        <div className="hidden xl:block w-px h-6 bg-border shrink-0" />
 
         {/* Venue connection status */}
         <VenueStatus />
       </div>
 
       {/* Main content */}
-      <main className="flex-1 overflow-hidden">{children}</main>
+      <main className="flex-1 overflow-hidden flex flex-col min-h-0">{children}</main>
 
       {/* Footer — network health */}
       <NetworkFooter />

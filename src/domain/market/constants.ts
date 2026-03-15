@@ -27,8 +27,8 @@ export const DEFAULT_MARKET: Market = {
 };
 
 export const VENUE_COLORS = {
-  polymarket: '#7C5CFC',
-  kalshi: '#3B82F6',
+  polymarket: '#3265F5',
+  kalshi: '#14B8A6',
 } as const;
 
 export const VENUE_LABELS = {

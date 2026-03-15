@@ -19,6 +19,7 @@ export class WebSocketManager {
   private lastMessageAt = 0;
   private intentionalClose = false;
   private config: WebSocketManagerConfig;
+  private onlineHandler: (() => void) | null = null;
 
   constructor(config: WebSocketManagerConfig) {
     this.config = config;
@@ -29,6 +30,7 @@ export class WebSocketManager {
   connect(): void {
     this.intentionalClose = false;
     this.cleanup();
+    this.listenOnline();
     this.config.onStateChange({ status: 'connecting' });
 
     try {
@@ -79,6 +81,7 @@ export class WebSocketManager {
   disconnect(): void {
     this.intentionalClose = true;
     this.cleanup();
+    this.removeOnlineListener();
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
@@ -135,6 +138,24 @@ export class WebSocketManager {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
+    }
+  }
+
+  private listenOnline(): void {
+    this.removeOnlineListener();
+    this.onlineHandler = () => {
+      if (this.intentionalClose) return;
+      this.reconnectAttempts = 0;
+      this.clearReconnectTimer();
+      this.connect();
+    };
+    window.addEventListener('online', this.onlineHandler);
+  }
+
+  private removeOnlineListener(): void {
+    if (this.onlineHandler) {
+      window.removeEventListener('online', this.onlineHandler);
+      this.onlineHandler = null;
     }
   }
 

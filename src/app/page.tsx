@@ -8,6 +8,8 @@ import { OrderBookPanel } from '@/components/orderbook/OrderBookPanel';
 import { QuotePanel } from '@/components/quote/QuotePanel';
 import { useOrderBook } from '@/hooks/useOrderBook';
 
+type MobileTab = 'chart' | 'book' | 'trade';
+
 function startDrag(
   axis: 'x' | 'y',
   startPos: number,
@@ -89,6 +91,7 @@ export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [bottomHeight, setBottomHeight] = useState(160);
   const [obWidth, setObWidth] = useState(280);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('chart');
 
   const handleRowDrag = useCallback((deltaY: number) => {
     setBottomHeight((prev) => {
@@ -109,16 +112,56 @@ export default function Home() {
 
   return (
     <AppShell>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] h-full">
+      {/* Mobile tab switcher */}
+      <div className="flex lg:hidden border-b border-border bg-surface shrink-0">
+        {(['chart', 'book', 'trade'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            className={`flex-1 py-2.5 text-[13px] font-medium text-center transition-colors ${
+              mobileTab === tab
+                ? 'text-foreground border-b-2 border-accent'
+                : 'text-muted hover:text-muted-light'
+            }`}
+          >
+            {tab === 'chart' ? 'Chart' : tab === 'book' ? 'Order Book' : 'Trade'}
+          </button>
+        ))}
+      </div>
+
+      {/* Mobile content */}
+      <div className="flex-1 lg:hidden overflow-hidden">
+        {mobileTab === 'chart' && (
+          <div className="flex flex-col h-full">
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <PriceChart />
+            </div>
+            <div className="shrink-0 overflow-hidden" style={{ height: Math.min(bottomHeight, 160) }}>
+              <TabBar />
+            </div>
+          </div>
+        )}
+        {mobileTab === 'book' && (
+          <div className="h-full overflow-hidden">
+            <OrderBookPanel />
+          </div>
+        )}
+        {mobileTab === 'trade' && (
+          <div className="h-full overflow-hidden bg-surface">
+            <QuotePanel />
+          </div>
+        )}
+      </div>
+
+      {/* Desktop layout */}
+      <div className="hidden lg:grid grid-cols-[1fr_300px] flex-1 min-h-0">
         <div ref={containerRef} className="flex flex-col h-full overflow-hidden border-r border-border">
           <div className="flex-1 min-h-0 flex overflow-hidden">
             <div className="flex-1 min-w-0 overflow-hidden">
               <PriceChart />
             </div>
-            <div className="hidden lg:flex">
-              <ColDragHandle onDrag={handleColDrag} />
-            </div>
-            <div className="hidden lg:block shrink-0 overflow-hidden" style={{ width: obWidth }}>
+            <ColDragHandle onDrag={handleColDrag} />
+            <div className="shrink-0 overflow-hidden" style={{ width: obWidth }}>
               <OrderBookPanel />
             </div>
           </div>
@@ -130,7 +173,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="hidden lg:flex flex-col bg-surface overflow-hidden">
+        <div className="flex flex-col bg-surface overflow-hidden">
           <QuotePanel />
         </div>
       </div>
