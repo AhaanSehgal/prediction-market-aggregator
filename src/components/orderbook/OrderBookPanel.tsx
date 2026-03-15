@@ -318,6 +318,12 @@ export function OrderBookPanel() {
 
   const hasAutoScrolled = useRef(false);
   const askUpdateCount = useRef(0);
+
+  useEffect(() => {
+    hasAutoScrolled.current = false;
+    askUpdateCount.current = 0;
+  }, [isNo]);
+
   useEffect(() => {
     if (hasAutoScrolled.current || asks.length === 0) return;
     askUpdateCount.current++;
