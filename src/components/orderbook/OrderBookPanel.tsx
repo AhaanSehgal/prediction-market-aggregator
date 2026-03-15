@@ -322,6 +322,7 @@ export function OrderBookPanel() {
   useEffect(() => {
     hasAutoScrolled.current = false;
     askUpdateCount.current = 0;
+    if (isNo && venueFilter === 'all' && tickSize < 1) setTickSize(1);
   }, [isNo]);
 
   useEffect(() => {
