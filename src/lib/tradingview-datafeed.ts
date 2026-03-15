@@ -43,7 +43,7 @@ function resToSecs(r: string): number {
 const polyInfo = DEFAULT_MARKET.venueInfo.find((v) => v.venue === 'polymarket');
 const POLY_TOKEN = polyInfo?.tokenId ?? '';
 
-const MARKET_EARLIEST_TS = 1752883200;
+const MARKET_EARLIEST_TS = Math.floor(Date.now() / 1000) - 86400 * 13;
 
 async function fetchPolyHistory(tokenId: string, from: number, to: number, fidelity: number): Promise<PricePoint[]> {
   const resp = await fetch(`/api/prices-history?market=${tokenId}&startTs=${from}&endTs=${to}&fidelity=${fidelity}`);
@@ -141,7 +141,8 @@ export function createDatafeed(invertPrices = false) {
       }
 
       try {
-        const polyPts = await fetchPolyHistory(POLY_TOKEN, from, to, resToFidelity(resolution));
+        const clampedFrom = Math.max(from, MARKET_EARLIEST_TS);
+        const polyPts = await fetchPolyHistory(POLY_TOKEN, clampedFrom, to, resToFidelity(resolution));
         let bars = ptsToCandles(polyPts, resToSecs(resolution));
         if (invertPrices) bars = bars.map(invertBar);
 
@@ -151,9 +152,7 @@ export function createDatafeed(invertPrices = false) {
           lastBar = bars[bars.length - 1];
         }
 
-        const earliestBar = bars.length > 0 ? bars[0].time / 1000 : to;
-        const reachedStart = earliestBar <= MARKET_EARLIEST_TS + 86400;
-        onResult(bars, { noData: bars.length === 0 || reachedStart });
+        onResult(bars, { noData: bars.length === 0 });
       } catch (err) {
         onError(String(err));
       }
