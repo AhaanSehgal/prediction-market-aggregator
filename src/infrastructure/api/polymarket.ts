@@ -4,12 +4,12 @@ import {
   PolymarketBookSnapshot,
 } from '@/domain/orderbook/normalizer';
 
-const CLOB_BASE_URL = 'https://clob.polymarket.com';
+import { POLYMARKET_CLOB } from '@/lib/api-urls';
 
 export async function fetchPolymarketBook(
   tokenId: string
 ): Promise<NormalizedOrderBook> {
-  const response = await fetch(`${CLOB_BASE_URL}/book?token_id=${tokenId}`);
+  const response = await fetch(`${POLYMARKET_CLOB}/book?token_id=${tokenId}`);
 
   if (!response.ok) {
     throw new Error(
@@ -26,7 +26,7 @@ export async function fetchPolymarketMidpoint(
 ): Promise<number | null> {
   try {
     const response = await fetch(
-      `${CLOB_BASE_URL}/midpoint?token_id=${tokenId}`
+      `${POLYMARKET_CLOB}/midpoint?token_id=${tokenId}`
     );
     if (!response.ok) return null;
     const data = await response.json();

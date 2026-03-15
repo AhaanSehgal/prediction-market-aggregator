@@ -1,0 +1,42 @@
+'use client';
+
+import { useMemo } from 'react';
+import { useOrderBookStore } from '@/stores/orderbook-store';
+import { useQuoteStore } from '@/stores/quote-store';
+import { calculateQuote } from '@/domain/orderbook/quote-engine';
+import { uncrossBook, flipBook } from '@/domain/orderbook/transforms';
+import { MergedOrderBook, QuoteResult } from '@/domain/orderbook/types';
+
+export interface BookForQuoteState {
+  effectiveBook: MergedOrderBook;
+  quote: QuoteResult | null;
+  isNo: boolean;
+  outcomeLabel: string;
+  currentPrice: number | null;
+}
+
+export function useBookForQuote(inputAmount: number): BookForQuoteState {
+  const mergedBook = useOrderBookStore((s) => s.mergedBook);
+  const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
+  const side = useQuoteStore((s) => s.side);
+
+  const isNo = selectedOutcome === 'no';
+  const outcomeLabel = isNo ? 'No' : 'Yes';
+
+  const effectiveBook = useMemo(() => {
+    if (!isNo) return uncrossBook(mergedBook);
+    return flipBook(mergedBook);
+  }, [mergedBook, isNo]);
+
+  const currentPrice = useMemo(() => {
+    if (effectiveBook.midpoint === null) return null;
+    return effectiveBook.midpoint;
+  }, [effectiveBook.midpoint]);
+
+  const quote = useMemo(() => {
+    if (inputAmount <= 0) return null;
+    return calculateQuote(effectiveBook, inputAmount, side);
+  }, [effectiveBook, inputAmount, side]);
+
+  return { effectiveBook, quote, isNo, outcomeLabel, currentPrice };
+}

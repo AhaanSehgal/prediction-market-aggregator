@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { useOrderBookStore } from '@/stores/orderbook-store';
-import { useQuoteStore } from '@/stores/quote-store';
-import { MergedPriceLevel, asProbability, asDollars } from '@/domain/orderbook/types';
+import { MergedPriceLevel } from '@/domain/orderbook/types';
 import { VENUE_COLORS, VENUE_LABELS } from '@/domain/market/constants';
-
-const MAX_LEVELS = 12;
-const TICK_OPTIONS_ALL = [0.1, 0.2, 0.5, 1, 2];
-const TICK_OPTIONS_KALSHI = [1, 2];
+import { useOrderBookView } from '@/hooks/useOrderBookView';
+import { OrderBookHeader } from './OrderBookHeader';
+import { BalanceBar } from './BalanceBar';
+import { SpreadRow } from './SpreadRow';
 
 function fmtCompact(n: number, prefix = ''): string {
   if (n >= 1_000_000) return `${prefix}${(n / 1_000_000).toFixed(2)}M`;
@@ -18,44 +16,9 @@ function fmtCompact(n: number, prefix = ''): string {
   return `${prefix}${n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
-function groupByTick(levels: MergedPriceLevel[], tickCents: number, side: 'bid' | 'ask'): MergedPriceLevel[] {
-  if (tickCents <= 0.1) return levels;
-  const tickDecimal = tickCents / 100;
-  const grouped = new Map<number, MergedPriceLevel>();
-
-  for (const level of levels) {
-    const key = side === 'bid'
-      ? Math.floor(level.price / tickDecimal) * tickDecimal
-      : Math.ceil(level.price / tickDecimal) * tickDecimal;
-    const rounded = Math.round(key * 10000) / 10000;
-
-    const existing = grouped.get(rounded);
-    if (existing) {
-      const mergedVenues = [...existing.venues];
-      for (const v of level.venues) {
-        const ev = mergedVenues.find((mv) => mv.venue === v.venue);
-        if (ev) ev.size = asDollars(ev.size + v.size);
-        else mergedVenues.push({ ...v });
-      }
-      grouped.set(rounded, {
-        price: asProbability(rounded),
-        totalSize: asDollars(existing.totalSize + level.totalSize),
-        venues: mergedVenues,
-      });
-    } else {
-      grouped.set(rounded, {
-        price: asProbability(rounded),
-        totalSize: level.totalSize,
-        venues: level.venues.map((v) => ({ ...v })),
-      });
-    }
-  }
-
-  const result = Array.from(grouped.values());
-  return side === 'bid'
-    ? result.sort((a, b) => b.price - a.price)
-    : result.sort((a, b) => a.price - b.price);
-}
+// ---------------------------------------------------------------------------
+// Row-level presentational components
+// ---------------------------------------------------------------------------
 
 function DepthBar({
   level,
@@ -228,254 +191,26 @@ function OrderRow({
   );
 }
 
-function flipLevels(levels: MergedPriceLevel[]): MergedPriceLevel[] {
-  return levels.map((l) => ({
-    ...l,
-    price: asProbability(1 - l.price),
-    venues: l.venues.map((v) => ({ ...v })),
-  }));
-}
-
-type VenueFilter = 'all' | 'polymarket' | 'kalshi';
-
-function filterByVenue(levels: MergedPriceLevel[], venue: VenueFilter): MergedPriceLevel[] {
-  if (venue === 'all') return levels;
-  return levels
-    .map((l) => {
-      const filtered = l.venues.filter((v) => v.venue === venue);
-      if (filtered.length === 0) return null;
-      return {
-        ...l,
-        totalSize: asDollars(filtered.reduce((sum, v) => sum + v.size, 0)),
-        venues: filtered,
-      };
-    })
-    .filter((l): l is MergedPriceLevel => l !== null);
-}
+// ---------------------------------------------------------------------------
+// OrderBookPanel — thin composer, no business logic
+// ---------------------------------------------------------------------------
 
 export function OrderBookPanel() {
-  const mergedBook = useOrderBookStore((s) => s.mergedBook);
-  const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
-  const [tickSize, setTickSize] = useState(0.1);
-  const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
-  const tickOptions = venueFilter === 'kalshi' ? TICK_OPTIONS_KALSHI : TICK_OPTIONS_ALL;
-  const [tickDropdownOpen, setTickDropdownOpen] = useState(false);
-  const [venueDropdownOpen, setVenueDropdownOpen] = useState(false);
+  const view = useOrderBookView();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const tickDropdownRef = useRef<HTMLDivElement>(null);
-  const venueDropdownRef = useRef<HTMLDivElement>(null);
-  const asksScrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (tickDropdownRef.current && !tickDropdownRef.current.contains(e.target as Node)) {
-        setTickDropdownOpen(false);
-      }
-      if (venueDropdownRef.current && !venueDropdownRef.current.contains(e.target as Node)) {
-        setVenueDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const isNo = selectedOutcome === 'no';
-
-  const rawAsks = useMemo(() => {
-    const source = isNo
-      ? flipLevels(mergedBook.bids).sort((a, b) => a.price - b.price)
-      : mergedBook.asks;
-    return filterByVenue(source, venueFilter);
-  }, [mergedBook.bids, mergedBook.asks, isNo, venueFilter]);
-
-  const rawBids = useMemo(() => {
-    const source = isNo
-      ? flipLevels(mergedBook.asks).sort((a, b) => b.price - a.price)
-      : mergedBook.bids;
-    return filterByVenue(source, venueFilter);
-  }, [mergedBook.bids, mergedBook.asks, isNo, venueFilter]);
-
-  const bestBid = rawBids.length > 0 ? rawBids[0].price : 0;
-  const bestAsk = useMemo(() => {
-    for (const l of rawAsks) {
-      if (l.price > bestBid) return l.price;
-    }
-    return 1;
-  }, [rawAsks, bestBid]);
-
-  const allAsksGrouped = useMemo(() => {
-    const filtered = rawAsks.filter((l) => l.price >= bestAsk);
-    return groupByTick(filtered, tickSize, 'ask');
-  }, [rawAsks, tickSize, bestAsk]);
-
-  const allBidsGrouped = useMemo(() => {
-    return groupByTick(rawBids, tickSize, 'bid');
-  }, [rawBids, tickSize]);
-
-  const asks = useMemo(() => [...allAsksGrouped].reverse(), [allAsksGrouped]);
-  const bids = useMemo(() => allBidsGrouped, [allBidsGrouped]);
-
-  const hasAutoScrolled = useRef(false);
-  const askUpdateCount = useRef(0);
-
-  useEffect(() => {
-    hasAutoScrolled.current = false;
-    askUpdateCount.current = 0;
-    if (isNo && venueFilter === 'all' && tickSize < 1) setTickSize(1);
-  }, [isNo]);
-
-  useEffect(() => {
-    if (hasAutoScrolled.current || asks.length === 0) return;
-    askUpdateCount.current++;
-    if (askUpdateCount.current >= 2 && asksScrollRef.current) {
-      asksScrollRef.current.scrollTop = asksScrollRef.current.scrollHeight;
-      hasAutoScrolled.current = true;
-    }
-  }, [asks]);
-
-  const askCumulatives = useMemo(() => {
-    const cum: number[] = new Array(asks.length);
-    let total = 0;
-    for (let i = asks.length - 1; i >= 0; i--) {
-      total += asks[i].totalSize;
-      cum[i] = total;
-    }
-    return cum;
-  }, [asks]);
-
-  const bidCumulatives = useMemo(() => {
-    const cum: number[] = new Array(bids.length);
-    let total = 0;
-    for (let i = 0; i < bids.length; i++) {
-      total += bids[i].totalSize;
-      cum[i] = total;
-    }
-    return cum;
-  }, [bids]);
-
-  const totalAskDepth = useMemo(() => {
-    let total = 0;
-    for (const l of allAsksGrouped) total += l.totalSize;
-    return Math.max(total, 1);
-  }, [allAsksGrouped]);
-
-  const totalBidDepth = useMemo(() => {
-    let total = 0;
-    for (const l of allBidsGrouped) total += l.totalSize;
-    return Math.max(total, 1);
-  }, [allBidsGrouped]);
-
-  const askCumUsd = useMemo(() => {
-    const cum: number[] = new Array(asks.length);
-    let total = 0;
-    for (let i = asks.length - 1; i >= 0; i--) {
-      total += asks[i].totalSize * asks[i].price;
-      cum[i] = total;
-    }
-    return cum;
-  }, [asks]);
-
-  const bidCumUsd = useMemo(() => {
-    const cum: number[] = new Array(bids.length);
-    let total = 0;
-    for (let i = 0; i < bids.length; i++) {
-      total += bids[i].totalSize * bids[i].price;
-      cum[i] = total;
-    }
-    return cum;
-  }, [bids]);
-
-  const filteredAsks = useMemo(
-    () => rawAsks.filter((l) => l.price >= bestAsk),
-    [rawAsks, bestAsk]
-  );
-  const bidTotal = useMemo(
-    () => rawBids.reduce((sum, l) => sum + l.totalSize, 0),
-    [rawBids]
-  );
-  const askTotal = useMemo(
-    () => filteredAsks.reduce((sum, l) => sum + l.totalSize, 0),
-    [filteredAsks]
-  );
-  const bidPct = bidTotal + askTotal > 0 ? Math.round((bidTotal / (bidTotal + askTotal)) * 100) : 50;
-
-  const spreadValue = bestAsk - bestBid;
-  const midpoint = (bestAsk + bestBid) / 2;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between px-3 h-9 border-b border-border shrink-0">
-        <span className="text-[13px] font-medium text-foreground whitespace-nowrap">
-          Order Book <span className="text-muted">({isNo ? 'No' : 'Yes'})</span>
-        </span>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="relative" ref={venueDropdownRef}>
-            <button
-              onClick={() => setVenueDropdownOpen(!venueDropdownOpen)}
-              className="flex items-center gap-1 px-2 py-0.5 bg-surface-2 border border-border rounded text-[11px] font-mono text-muted-light cursor-pointer hover:bg-surface-3 transition-colors"
-            >
-              {venueFilter === 'all' ? 'All' : venueFilter === 'polymarket' ? 'Polymarket' : 'Kalshi'}
-              <svg className="w-3 h-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {venueDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded shadow-lg z-50 min-w-[80px]">
-                {(['all', 'polymarket', 'kalshi'] as const).map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => {
-                      setVenueFilter(v);
-                      setVenueDropdownOpen(false);
-                      if (v === 'kalshi' && tickSize < 1) setTickSize(1);
-                    }}
-                    className={`block w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                      v === venueFilter ? 'text-foreground bg-surface-3' : 'text-muted-light hover:bg-surface-3'
-                    }`}
-                  >
-                    {v === 'all' ? 'All' : v === 'polymarket' ? 'Polymarket' : 'Kalshi'}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="relative" ref={tickDropdownRef}>
-            <button
-              onClick={() => setTickDropdownOpen(!tickDropdownOpen)}
-              className="flex items-center gap-1 px-2 py-0.5 bg-surface-2 border border-border rounded text-[11px] font-mono text-muted-light cursor-pointer hover:bg-surface-3 transition-colors"
-            >
-              {tickSize}¢
-              <svg className="w-3 h-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {tickDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded shadow-lg z-50 min-w-[60px]">
-                {tickOptions.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => { setTickSize(t); setTickDropdownOpen(false); }}
-                    className={`block w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                      t === tickSize ? 'text-foreground bg-surface-3' : 'text-muted-light hover:bg-surface-3'
-                    }`}
-                  >
-                    {t}¢
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <OrderBookHeader
+        isNo={view.isNo}
+        venueFilter={view.venueFilter}
+        setVenueFilter={view.setVenueFilter}
+        tickSize={view.tickSize}
+        setTickSize={view.setTickSize}
+        tickOptions={view.tickOptions}
+      />
 
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
-        <span className="text-[11px] font-mono text-bid">B {bidPct}%</span>
-        <div className="flex-1 flex h-[4px] rounded-full overflow-hidden">
-          <div className="bg-bid h-full transition-all" style={{ width: `${bidPct}%` }} />
-          <div className="bg-ask h-full flex-1" />
-        </div>
-        <span className="text-[11px] font-mono text-ask">{100 - bidPct}% S</span>
-      </div>
+      <BalanceBar bidPct={view.bidPct} />
 
       <div
         className="grid px-3 py-1 items-center text-[10px] font-mono text-muted border-b border-border shrink-0"
@@ -487,21 +222,21 @@ export function OrderBookPanel() {
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        {asks.length === 0 && bids.length === 0 ? (
+        {view.asks.length === 0 && view.bids.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-muted text-[11px] font-mono">
             Waiting for data…
           </div>
         ) : (
           <>
             <div className="flex-1 flex flex-col justify-end overflow-hidden">
-              <div ref={asksScrollRef} className="overflow-y-auto">
-                {asks.map((level, i) => (
+              <div ref={view.asksScrollRef} className="overflow-y-auto">
+                {view.asks.map((level, i) => (
                   <OrderRow
                     key={`a-${level.price}`}
                     level={level}
                     side="ask"
-                    barWidth={Math.min(((askCumulatives[i] ?? 0) / totalAskDepth) * 100, 100)}
-                    cumUsd={askCumUsd[i] ?? 0}
+                    barWidth={Math.min(((view.askCumulatives[i] ?? 0) / view.totalAskDepth) * 100, 100)}
+                    cumUsd={view.askCumUsd[i] ?? 0}
                     hoveredRow={hoveredRow}
                     setHoveredRow={setHoveredRow}
                   />
@@ -509,32 +244,21 @@ export function OrderBookPanel() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-3 h-6 border-y border-border bg-surface-2 shrink-0">
-              <span className="text-[11px] font-mono text-muted">Spread</span>
-              <div className="flex items-center gap-2 text-[11px] font-mono">
-                {bestBid > 0 && bestAsk < 1 && (
-                  <>
-                    <span className="text-muted-light">
-                      {(spreadValue * 100).toFixed(1)}¢
-                    </span>
-                    {midpoint > 0 && (
-                      <span className="text-muted">
-                        {((spreadValue / midpoint) * 100).toFixed(3)}%
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
+            <SpreadRow
+              bestBid={view.bestBid}
+              bestAsk={view.bestAsk}
+              spreadValue={view.spreadValue}
+              midpoint={view.midpoint}
+            />
 
             <div className="flex-1 overflow-y-auto">
-              {bids.map((level, i) => (
+              {view.bids.map((level, i) => (
                 <OrderRow
                   key={`b-${level.price}`}
                   level={level}
                   side="bid"
-                  barWidth={Math.min(((bidCumulatives[i] ?? 0) / totalBidDepth) * 100, 100)}
-                  cumUsd={bidCumUsd[i] ?? 0}
+                  barWidth={Math.min(((view.bidCumulatives[i] ?? 0) / view.totalBidDepth) * 100, 100)}
+                  cumUsd={view.bidCumUsd[i] ?? 0}
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
                 />

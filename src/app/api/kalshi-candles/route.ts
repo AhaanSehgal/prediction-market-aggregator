@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const KALSHI = 'https://api.elections.kalshi.com/trade-api/v2';
+import { KALSHI_API } from '@/lib/api-urls';
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -11,7 +10,7 @@ export async function GET(req: NextRequest) {
   const interval = sp.get('period_interval') || '60';
 
   const resp = await fetch(
-    `${KALSHI}/series/${series}/markets/${ticker}/candlesticks?start_ts=${startTs}&end_ts=${endTs}&period_interval=${interval}`
+    `${KALSHI_API}/series/${series}/markets/${ticker}/candlesticks?start_ts=${startTs}&end_ts=${endTs}&period_interval=${interval}`
   );
   const data = await resp.json();
   return NextResponse.json(data);

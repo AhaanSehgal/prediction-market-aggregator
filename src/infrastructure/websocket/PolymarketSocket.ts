@@ -8,7 +8,7 @@ import {
   PolymarketBookSnapshot,
 } from '@/domain/orderbook/normalizer';
 
-const POLYMARKET_WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
+import { POLYMARKET_WS } from '@/lib/api-urls';
 
 export interface PriceChangeData {
   price: number;
@@ -34,7 +34,7 @@ export class PolymarketSocket {
     this.callbacks = callbacks;
 
     this.manager = new WebSocketManager({
-      url: POLYMARKET_WS_URL,
+      url: POLYMARKET_WS,
       onMessage: this.handleMessage.bind(this),
       onStateChange: (state) => {
         this.callbacks.onStateChange(state);
