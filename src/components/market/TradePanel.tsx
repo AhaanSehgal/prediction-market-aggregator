@@ -50,7 +50,6 @@ export function TradePanel() {
 
   return (
     <div className="flex flex-col h-full bg-surface overflow-hidden">
-      {/* ── Order Book (Yes) header with resolution dropdown ── */}
       <div className="flex items-center justify-between px-3 h-9 border-b border-border shrink-0">
         <span className="text-[13px] font-medium text-foreground">Order Book <span className="text-muted">(Yes)</span></span>
         <div className="flex items-center gap-1 px-2 py-0.5 bg-surface-2 border border-border rounded text-[11px] font-mono text-muted-light cursor-pointer hover:bg-surface-3 transition-colors">
@@ -61,7 +60,6 @@ export function TradePanel() {
         </div>
       </div>
 
-      {/* ── Buy / Sell tabs ── */}
       <div className="grid grid-cols-2 border-b border-border shrink-0">
         <button
           onClick={() => setActiveTab('buy')}
@@ -85,7 +83,6 @@ export function TradePanel() {
         </button>
       </div>
 
-      {/* ── Market / Limit / Pro tabs ── */}
       <div className="grid grid-cols-3 border-b border-border shrink-0">
         {(['market', 'limit', 'pro'] as const).map((type) => (
           <button
@@ -102,7 +99,6 @@ export function TradePanel() {
         ))}
       </div>
 
-      {/* ── Bid/Ask balance bar ── */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
         <span className="text-[11px] font-mono text-bid">B {bidPct}%</span>
         <div className="flex-1 flex h-[4px] rounded-full overflow-hidden">
@@ -112,7 +108,6 @@ export function TradePanel() {
         <span className="text-[11px] font-mono text-ask">{100 - bidPct}% S</span>
       </div>
 
-      {/* ── Fill and Kill (FAK) ── */}
       <div className="flex items-center justify-between px-3 py-1 border-b border-border shrink-0">
         <span className="text-[11px] text-muted">Fill and Kill (FAK)</span>
         <svg className="w-3.5 h-3.5 text-muted cursor-pointer hover:text-muted-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +116,6 @@ export function TradePanel() {
         </svg>
       </div>
 
-      {/* ── Column headers ── */}
       <div
         className="grid px-3 py-1 items-center text-[10px] font-mono text-muted border-b border-border shrink-0"
         style={{ gridTemplateColumns: '52px 1fr 72px' }}
@@ -131,7 +125,6 @@ export function TradePanel() {
         <span className="text-right">Total (USD)</span>
       </div>
 
-      {/* ── Order book ── */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         {asks.length === 0 && bids.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-muted text-[11px] font-mono">
@@ -139,7 +132,6 @@ export function TradePanel() {
           </div>
         ) : (
           <>
-            {/* Asks */}
             <div className="flex-1 flex flex-col justify-end overflow-hidden">
               <div className="overflow-y-auto">
                 {asks.map((level, i) => {
@@ -159,7 +151,6 @@ export function TradePanel() {
               </div>
             </div>
 
-            {/* Spread */}
             <div className="flex items-center justify-between px-3 h-6 border-y border-border bg-surface-2 shrink-0">
               <span className="text-[11px] font-mono text-muted">Spread</span>
               <div className="flex items-center gap-2 text-[11px] font-mono">
@@ -176,7 +167,6 @@ export function TradePanel() {
               </div>
             </div>
 
-            {/* Bids */}
             <div className="flex-1 overflow-y-auto">
               {bids.map((level, i) => {
                 const barWidth = maxCumulative > 0 ? Math.min(((bidCumulatives[i] ?? 0) / maxCumulative) * 100, 100) : 0;
@@ -197,9 +187,7 @@ export function TradePanel() {
         )}
       </div>
 
-      {/* ── Trade form section ── */}
       <div className="border-t border-border shrink-0">
-        {/* Shares input */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
           <span className="text-[12px] text-muted-light">Shares</span>
           <span className="text-[11px] text-muted font-mono">Bal: --</span>
@@ -213,7 +201,6 @@ export function TradePanel() {
           </div>
         </div>
 
-        {/* Quick amounts */}
         <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border">
           {['+$10', '+$50', '+$200', '+$1000'].map((amt) => (
             <button
@@ -230,7 +217,6 @@ export function TradePanel() {
           </button>
         </div>
 
-        {/* Slider */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
           <div className="flex-1 h-[3px] bg-surface-3 rounded-full">
             <div className="h-[3px] w-0 bg-accent rounded-full" />
@@ -238,13 +224,11 @@ export function TradePanel() {
           <span className="text-[11px] font-mono text-muted w-8 text-right">0 %</span>
         </div>
 
-        {/* Take Profit / Stop Loss */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
           <span className="text-[12px] text-muted-light">Take Profit / Stop Loss</span>
           <button className="text-[11px] text-accent hover:text-accent/80 transition-colors">+ Add</button>
         </div>
 
-        {/* Summary */}
         <div className="px-3 py-2 space-y-1 border-b border-border">
           <div className="flex items-center justify-between">
             <span className="text-[12px] text-muted-light">If you win</span>
@@ -260,14 +244,12 @@ export function TradePanel() {
           </div>
         </div>
 
-        {/* Trade button */}
         <div className="px-3 py-3">
           <button className="w-full py-2.5 text-[14px] font-semibold text-background bg-bid hover:bg-bid-bright rounded-lg transition-colors">
             Trade
           </button>
         </div>
 
-        {/* Footer */}
         <div className="px-3 pb-2 text-center">
           <span className="text-[10px] text-muted">
             By trading, you agree to our{' '}

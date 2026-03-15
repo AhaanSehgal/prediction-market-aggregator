@@ -21,13 +21,11 @@ export function MarketStats() {
 
   return (
     <div className="flex flex-col h-full bg-surface text-xs font-mono">
-      {/* Section header */}
       <div className="flex items-center px-3 h-8 border-b border-border bg-surface-2 shrink-0">
         <span className="text-[11px] text-muted-light uppercase tracking-wider">Market Info</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {/* Title */}
         <div>
           <div className="text-[13px] text-white font-sans font-medium leading-tight">
             {DEFAULT_MARKET.title}
@@ -35,7 +33,6 @@ export function MarketStats() {
           <div className="text-[10px] text-muted mt-1">{DEFAULT_MARKET.category}</div>
         </div>
 
-        {/* Outcome prices */}
         <div className="grid grid-cols-2 gap-1">
           {DEFAULT_MARKET.outcomes.map((outcome) => (
             <div
@@ -52,7 +49,6 @@ export function MarketStats() {
           ))}
         </div>
 
-        {/* Key metrics */}
         <div className="space-y-1.5">
           <div className="text-[10px] text-muted uppercase tracking-wider">Key Metrics</div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1">
@@ -75,7 +71,6 @@ export function MarketStats() {
           </div>
         </div>
 
-        {/* Liquidity */}
         <div className="space-y-1.5">
           <div className="text-[10px] text-muted uppercase tracking-wider">Liquidity</div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1">
@@ -85,7 +80,6 @@ export function MarketStats() {
             <span className="text-right text-ask">{formatDollars(totalAskLiquidity)}</span>
           </div>
 
-          {/* Bid/Ask balance bar */}
           <div className="flex h-1 rounded-full overflow-hidden bg-surface-2 mt-1">
             <div
               className="bg-bid"
@@ -103,7 +97,6 @@ export function MarketStats() {
           </div>
         </div>
 
-        {/* Venue status */}
         <div className="space-y-1.5">
           <div className="text-[10px] text-muted uppercase tracking-wider">Venues</div>
           {(Object.keys(venueBooks) as VenueId[]).map((venue) => {

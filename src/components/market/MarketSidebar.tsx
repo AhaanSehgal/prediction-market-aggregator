@@ -13,7 +13,6 @@ const CANDIDATES = [
 export function MarketSidebar() {
   return (
     <div className="flex flex-col h-full overflow-hidden bg-surface">
-      {/* Header */}
       <div className="flex items-center justify-between px-3 h-10 border-b border-border shrink-0">
         <span className="text-[13px] font-medium text-foreground truncate">
           Republican Presidential ...
@@ -26,13 +25,11 @@ export function MarketSidebar() {
         </button>
       </div>
 
-      {/* All markets label */}
       <div className="px-3 py-2 border-b border-border">
         <div className="text-[12px] text-muted-light">All markets</div>
         <div className="text-[11px] text-muted font-mono">$174.6M Volume</div>
       </div>
 
-      {/* Candidate list */}
       <div className="flex-1 overflow-y-auto">
         {CANDIDATES.map((candidate, i) => (
           <div
@@ -43,7 +40,6 @@ export function MarketSidebar() {
                 : 'hover:bg-surface-2/50'
             }`}
           >
-            {/* Candidate name row */}
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-base shrink-0">{candidate.avatar}</span>
               <div className="flex-1 min-w-0">
@@ -65,7 +61,6 @@ export function MarketSidebar() {
               </div>
             </div>
 
-            {/* YES/NO buttons */}
             <div className="flex items-center gap-1.5">
               <button className={`flex-1 text-center py-1.5 text-[12px] font-mono font-medium rounded transition-colors ${
                 candidate.active

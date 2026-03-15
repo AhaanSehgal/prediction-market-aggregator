@@ -112,7 +112,6 @@ export default function Home() {
 
   return (
     <AppShell>
-      {/* Mobile tab switcher */}
       <div className="flex lg:hidden border-b border-border bg-surface shrink-0">
         {(['chart', 'book', 'trade'] as const).map((tab) => (
           <button
@@ -129,7 +128,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Mobile content */}
       <div className="flex-1 lg:hidden overflow-hidden">
         {mobileTab === 'chart' && (
           <div className="flex flex-col h-full">
@@ -153,7 +151,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Desktop layout */}
       <div className="hidden lg:grid grid-cols-[1fr_300px] flex-1 min-h-0">
         <div ref={containerRef} className="flex flex-col h-full overflow-hidden border-r border-border">
           <div className="flex-1 min-h-0 flex overflow-hidden">

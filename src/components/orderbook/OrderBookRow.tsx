@@ -42,7 +42,6 @@ export const OrderBookRow = React.memo(function OrderBookRow({
       ref={rowRef}
       className="relative h-[21px] flex items-center text-[11px] font-mono cursor-default hover:bg-white/[0.03]"
     >
-      {/* Depth bar */}
       <div
         className="absolute inset-y-0 right-0 pointer-events-none"
         style={{
@@ -51,7 +50,6 @@ export const OrderBookRow = React.memo(function OrderBookRow({
         }}
       />
 
-      {/* Content */}
       <div className="relative z-10 grid w-full items-center tabular-nums" style={{ gridTemplateColumns: '48px 1fr 68px' }}>
         <span className={`pl-2 ${isBid ? 'text-bid' : 'text-ask'}`}>
           {priceDisplay}¢

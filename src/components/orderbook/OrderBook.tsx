@@ -46,8 +46,6 @@ export function OrderBook() {
   );
 
   const isEmpty = asks.length === 0 && bids.length === 0;
-
-  // Bid/ask balance for the horizontal bar
   const bidTotal = bidCumulatives[bidCumulatives.length - 1] ?? 0;
   const askTotal = askCumulatives[0] ?? 0;
   const bidPct = bidTotal + askTotal > 0 ? Math.round((bidTotal / (bidTotal + askTotal)) * 100) : 50;

@@ -44,10 +44,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       <LiveTitle />
-      {/* Primary nav bar */}
       <header className="flex items-center justify-between px-3 md:px-5 py-2 md:py-3 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-4 md:gap-6">
-          {/* Logo */}
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[15px]"></span>
             <span className="text-sm md:text-base font-semibold tracking-tight">
@@ -68,7 +66,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-3 md:gap-4">
-          {/* Search */}
           <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-surface-2 border border-border rounded-md w-52">
             <svg className="w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -77,16 +74,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="ml-auto text-[10px] text-muted border border-border-light rounded px-1 py-0.5 font-mono">K</span>
           </div>
 
-          {/* Sign In */}
           <button className="px-3 md:px-4 py-1.5 text-[12px] md:text-[13px] text-foreground bg-surface-2 border border-border-light rounded-md hover:bg-surface-3 transition-colors">
             Sign In
           </button>
         </div>
       </header>
 
-      {/* Market sub-header */}
       <div className="flex items-center gap-3 md:gap-5 px-3 md:px-6 py-2 md:py-3 border-b border-border bg-surface shrink-0 overflow-x-auto">
-        {/* Star + Market title */}
         <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
           <button className="text-muted hover:text-foreground transition-colors hidden sm:block">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +92,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </div>
 
-        {/* YES/NO pills */}
         {yesPrice !== null && noPrice !== null ? (
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
             <button
@@ -129,10 +122,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Divider */}
         <div className="hidden md:block w-px h-6 bg-border shrink-0" />
 
-        {/* Market stats */}
         {yesPrice !== null ? (
           <div className="hidden xl:flex items-center gap-6 text-[12px] font-mono whitespace-nowrap shrink-0">
             <div className="flex flex-col items-start gap-0.5">
@@ -169,17 +160,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Divider */}
         <div className="hidden xl:block w-px h-6 bg-border shrink-0" />
 
-        {/* Venue connection status */}
         <VenueStatus />
       </div>
 
-      {/* Main content */}
       <main className="flex-1 overflow-hidden flex flex-col min-h-0">{children}</main>
 
-      {/* Footer — network health */}
       <NetworkFooter />
     </div>
   );
