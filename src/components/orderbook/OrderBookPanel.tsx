@@ -232,10 +232,29 @@ function flipLevels(levels: MergedPriceLevel[]): MergedPriceLevel[] {
   }));
 }
 
+type VenueFilter = 'all' | 'polymarket' | 'kalshi';
+
+/** Filter merged levels to only include a specific venue's liquidity */
+function filterByVenue(levels: MergedPriceLevel[], venue: VenueFilter): MergedPriceLevel[] {
+  if (venue === 'all') return levels;
+  return levels
+    .map((l) => {
+      const filtered = l.venues.filter((v) => v.venue === venue);
+      if (filtered.length === 0) return null;
+      return {
+        ...l,
+        totalSize: asDollars(filtered.reduce((sum, v) => sum + v.size, 0)),
+        venues: filtered,
+      };
+    })
+    .filter((l): l is MergedPriceLevel => l !== null);
+}
+
 export function OrderBookPanel() {
   const mergedBook = useOrderBookStore((s) => s.mergedBook);
   const selectedOutcome = useQuoteStore((s) => s.selectedOutcome);
   const [tickSize, setTickSize] = useState(0.1);
+  const [venueFilter, setVenueFilter] = useState<VenueFilter>('all');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -256,22 +275,18 @@ export function OrderBookPanel() {
   const isNo = selectedOutcome === 'no';
 
   const rawAsks = useMemo(() => {
-    if (isNo) {
-      // YES bids → NO asks, flip prices, sort ascending
-      const flipped = flipLevels(mergedBook.bids);
-      return flipped.sort((a, b) => a.price - b.price);
-    }
-    return mergedBook.asks;
-  }, [mergedBook.bids, mergedBook.asks, isNo]);
+    const source = isNo
+      ? flipLevels(mergedBook.bids).sort((a, b) => a.price - b.price)
+      : mergedBook.asks;
+    return filterByVenue(source, venueFilter);
+  }, [mergedBook.bids, mergedBook.asks, isNo, venueFilter]);
 
   const rawBids = useMemo(() => {
-    if (isNo) {
-      // YES asks → NO bids, flip prices, sort descending
-      const flipped = flipLevels(mergedBook.asks);
-      return flipped.sort((a, b) => b.price - a.price);
-    }
-    return mergedBook.bids;
-  }, [mergedBook.bids, mergedBook.asks, isNo]);
+    const source = isNo
+      ? flipLevels(mergedBook.asks).sort((a, b) => b.price - a.price)
+      : mergedBook.bids;
+    return filterByVenue(source, venueFilter);
+  }, [mergedBook.bids, mergedBook.asks, isNo, venueFilter]);
 
   // Filter out crossed levels: find the true uncrossed spread first
   const bestBid = rawBids.length > 0 ? rawBids[0].price : 0;
@@ -421,6 +436,23 @@ export function OrderBookPanel() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Venue filter */}
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border shrink-0">
+        {(['all', 'polymarket', 'kalshi'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setVenueFilter(v)}
+            className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
+              venueFilter === v
+                ? 'bg-surface-3 text-foreground'
+                : 'text-muted hover:text-muted-light hover:bg-surface-2'
+            }`}
+          >
+            {v === 'all' ? 'All' : v === 'polymarket' ? 'Polymarket' : 'Kalshi'}
+          </button>
+        ))}
       </div>
 
       {/* Bid/Ask balance */}
