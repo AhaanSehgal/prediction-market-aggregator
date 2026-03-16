@@ -127,6 +127,65 @@ function VenueTooltip({ level, side, anchorRef }: { level: MergedPriceLevel; sid
   );
 }
 
+function ArbTooltip({
+  level,
+  bestBid,
+  anchorRef,
+}: {
+  level: MergedPriceLevel;
+  bestBid: number;
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setPos({ left: rect.left + 4, top: rect.bottom + 4 });
+  }, [anchorRef]);
+
+  if (!pos) return null;
+
+  const profitCents = ((bestBid - level.price) * 100);
+  const askVenues = level.venues.map((v) => VENUE_LABELS[v.venue]).join(', ');
+  const otherSide = level.venues.some((v) => v.venue === 'kalshi') ? 'Polymarket' : 'Kalshi';
+
+  return ReactDOM.createPortal(
+    <div
+      className="fixed z-[9999] bg-surface-3 border border-yellow-400/30 rounded-md px-2.5 py-2 shadow-lg pointer-events-none whitespace-nowrap"
+      style={{ left: pos.left, top: pos.top }}
+    >
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className="text-[9px] font-semibold text-yellow-400 bg-yellow-400/15 px-1 py-0.5 rounded">ARB</span>
+        <span className="text-[10px] font-mono text-yellow-400 font-medium">Cross-venue arbitrage</span>
+      </div>
+      <div className="text-[10px] font-mono text-muted-light leading-relaxed">
+        <span>Ask at </span>
+        <span className="text-yellow-400">{(level.price * 100).toFixed(1)}¢</span>
+        <span> is below best bid at </span>
+        <span className="text-bid">{(bestBid * 100).toFixed(1)}¢</span>
+      </div>
+      <div className="text-[10px] font-mono text-muted-light mt-1">
+        Available on <span className="text-foreground">{askVenues}</span>
+        <span> - fill against </span>
+        <span className="text-foreground">{otherSide}</span>
+        <span> bids</span>
+      </div>
+      <div className="border-t border-border mt-1.5 pt-1.5 flex items-center justify-between">
+        <span className="text-[10px] font-mono text-muted">Profit per share</span>
+        <span className="text-[10px] font-mono text-bid font-medium">+{profitCents.toFixed(1)}¢</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-mono text-muted">Total size</span>
+        <span className="text-[10px] font-mono text-foreground font-medium">
+          {level.totalSize.toLocaleString('en-US', { maximumFractionDigits: 0 })} shares
+        </span>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function OrderRow({
   level,
   side,
@@ -134,6 +193,8 @@ function OrderRow({
   cumUsd,
   hoveredRow,
   setHoveredRow,
+  isCrossed,
+  bestBid,
 }: {
   level: MergedPriceLevel;
   side: 'bid' | 'ask';
@@ -141,24 +202,35 @@ function OrderRow({
   cumUsd: number;
   hoveredRow: string | null;
   setHoveredRow: (key: string | null) => void;
+  isCrossed?: boolean;
+  bestBid?: number;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
   const prevSize = useRef(level.totalSize);
-  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashColor = side === 'bid' ? 'rgba(0, 192, 118, 0.15)' : 'rgba(255, 77, 106, 0.15)';
+  const crossedBg = isCrossed ? 'rgba(234, 179, 8, 0.08)' : '';
 
   useEffect(() => {
     if (prevSize.current !== level.totalSize) {
       prevSize.current = level.totalSize;
-      setFlash(true);
-      const id = setTimeout(() => setFlash(false), 400);
-      return () => clearTimeout(id);
+      const el = rowRef.current;
+      if (el) {
+        el.style.backgroundColor = flashColor;
+        el.style.transition = 'none';
+        if (flashTimer.current) clearTimeout(flashTimer.current);
+        flashTimer.current = setTimeout(() => {
+          el.style.transition = 'background-color 400ms ease-out';
+          el.style.backgroundColor = crossedBg;
+        }, 16);
+      }
     }
-  }, [level.totalSize]);
+  }, [level.totalSize, flashColor, crossedBg]);
 
   const rowKey = `${side === 'bid' ? 'b' : 'a'}-${level.price}`;
   const isHovered = hoveredRow === rowKey;
-  const priceColor = side === 'bid' ? 'text-bid' : 'text-ask';
-  const flashColor = side === 'bid' ? 'rgba(0, 192, 118, 0.15)' : 'rgba(255, 77, 106, 0.15)';
+  const priceColor = isCrossed ? 'text-yellow-400' : side === 'bid' ? 'text-bid' : 'text-ask';
 
   return (
     <div
@@ -166,15 +238,20 @@ function OrderRow({
       key={rowKey}
       className="relative h-[22px] flex items-center text-[11px] font-mono cursor-default hover:bg-white/[0.03]"
       style={{
-        backgroundColor: flash ? flashColor : undefined,
-        transition: flash ? 'none' : 'background-color 400ms ease-out',
+        backgroundColor: crossedBg,
+        transition: 'background-color 400ms ease-out',
       }}
       onMouseEnter={() => setHoveredRow(rowKey)}
       onMouseLeave={() => setHoveredRow(null)}
     >
       <DepthBar level={level} barWidthPct={barWidth} side={side} />
       <div className="relative z-10 grid w-full items-center tabular-nums" style={{ gridTemplateColumns: '52px 1fr 80px' }}>
-        <span className={`pl-3 ${priceColor}`}>{(level.price * 100).toFixed(1)}¢</span>
+        <span className={`pl-3 flex items-center gap-1 ${priceColor}`}>
+          {isCrossed && (
+            <span className="text-[7px] font-semibold bg-yellow-400/20 text-yellow-400 px-[3px] py-[1px] rounded leading-none">ARB</span>
+          )}
+          {(level.price * 100).toFixed(1)}¢
+        </span>
         <span className="text-right text-foreground">
           {fmtCompact(level.totalSize)}
         </span>
@@ -182,27 +259,51 @@ function OrderRow({
           {fmtCompact(cumUsd, '$')}
         </span>
       </div>
-      {isHovered && <VenueTooltip level={level} side={side} anchorRef={rowRef} />}
+      {isHovered && isCrossed && bestBid !== undefined && (
+        <ArbTooltip level={level} bestBid={bestBid} anchorRef={rowRef} />
+      )}
+      {isHovered && !isCrossed && <VenueTooltip level={level} side={side} anchorRef={rowRef} />}
     </div>
   );
 }
 
 export function OrderBookPanel() {
-  const view = useOrderBookView();
+  const {
+    asks,
+    bids,
+    askCumulatives,
+    bidCumulatives,
+    askCumUsd,
+    bidCumUsd,
+    totalAskDepth,
+    totalBidDepth,
+    bestBid,
+    bestAsk,
+    spreadValue,
+    midpoint,
+    bidPct,
+    isNo,
+    tickSize,
+    setTickSize,
+    venueFilter,
+    setVenueFilter,
+    tickOptions,
+    asksScrollRef,
+  } = useOrderBookView();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <OrderBookHeader
-        isNo={view.isNo}
-        venueFilter={view.venueFilter}
-        setVenueFilter={view.setVenueFilter}
-        tickSize={view.tickSize}
-        setTickSize={view.setTickSize}
-        tickOptions={view.tickOptions}
+        isNo={isNo}
+        venueFilter={venueFilter}
+        setVenueFilter={setVenueFilter}
+        tickSize={tickSize}
+        setTickSize={setTickSize}
+        tickOptions={tickOptions}
       />
 
-      <BalanceBar bidPct={view.bidPct} />
+      <BalanceBar bidPct={bidPct} />
 
       <div
         className="grid px-3 py-1 items-center text-[10px] font-mono text-muted border-b border-border shrink-0"
@@ -214,43 +315,45 @@ export function OrderBookPanel() {
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        {view.asks.length === 0 && view.bids.length === 0 ? (
+        {asks.length === 0 && bids.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-muted text-[11px] font-mono">
             Waiting for data…
           </div>
         ) : (
           <>
             <div className="flex-1 flex flex-col justify-end overflow-hidden">
-              <div ref={view.asksScrollRef} className="overflow-y-auto">
-                {view.asks.map((level, i) => (
+              <div ref={asksScrollRef} className="overflow-y-auto">
+                {asks.map((level, i) => (
                   <OrderRow
                     key={`a-${level.price}`}
                     level={level}
                     side="ask"
-                    barWidth={Math.min(((view.askCumulatives[i] ?? 0) / view.totalAskDepth) * 100, 100)}
-                    cumUsd={view.askCumUsd[i] ?? 0}
+                    barWidth={Math.min(((askCumulatives[i] ?? 0) / totalAskDepth) * 100, 100)}
+                    cumUsd={askCumUsd[i] ?? 0}
                     hoveredRow={hoveredRow}
                     setHoveredRow={setHoveredRow}
+                    isCrossed={level.price <= bestBid}
+                    bestBid={bestBid}
                   />
                 ))}
               </div>
             </div>
 
             <SpreadRow
-              bestBid={view.bestBid}
-              bestAsk={view.bestAsk}
-              spreadValue={view.spreadValue}
-              midpoint={view.midpoint}
+              bestBid={bestBid}
+              bestAsk={bestAsk}
+              spreadValue={spreadValue}
+              midpoint={midpoint}
             />
 
             <div className="flex-1 overflow-y-auto">
-              {view.bids.map((level, i) => (
+              {bids.map((level, i) => (
                 <OrderRow
                   key={`b-${level.price}`}
                   level={level}
                   side="bid"
-                  barWidth={Math.min(((view.bidCumulatives[i] ?? 0) / view.totalBidDepth) * 100, 100)}
-                  cumUsd={view.bidCumUsd[i] ?? 0}
+                  barWidth={Math.min(((bidCumulatives[i] ?? 0) / totalBidDepth) * 100, 100)}
+                  cumUsd={bidCumUsd[i] ?? 0}
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
                 />

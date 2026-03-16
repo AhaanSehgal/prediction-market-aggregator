@@ -92,13 +92,13 @@ export function useOrderBookView(): OrderBookViewState {
     for (const l of rawAsks) {
       if (l.price > bestBid) return l.price;
     }
-    return 1;
+    return rawAsks.length > 0 ? rawAsks[0].price : 1;
   }, [rawAsks, bestBid]);
 
-  const allAsksGrouped = useMemo(() => {
-    const filtered = rawAsks.filter((l) => l.price >= bestAsk);
-    return groupByTick(filtered, effectiveTickSize, 'ask');
-  }, [rawAsks, effectiveTickSize, bestAsk]);
+  const allAsksGrouped = useMemo(
+    () => groupByTick(rawAsks, effectiveTickSize, 'ask'),
+    [rawAsks, effectiveTickSize]
+  );
 
   const allBidsGrouped = useMemo(
     () => groupByTick(rawBids, effectiveTickSize, 'bid'),
@@ -124,17 +124,13 @@ export function useOrderBookView(): OrderBookViewState {
   const totalAskDepth = useMemo(() => totalSize(allAsksGrouped), [allAsksGrouped]);
   const totalBidDepth = useMemo(() => totalSize(allBidsGrouped), [allBidsGrouped]);
 
-  const filteredAsks = useMemo(
-    () => rawAsks.filter((l) => l.price >= bestAsk),
-    [rawAsks, bestAsk]
-  );
   const bidTotal = useMemo(
     () => rawBids.reduce((sum, l) => sum + l.totalSize, 0),
     [rawBids]
   );
   const askTotal = useMemo(
-    () => filteredAsks.reduce((sum, l) => sum + l.totalSize, 0),
-    [filteredAsks]
+    () => rawAsks.reduce((sum, l) => sum + l.totalSize, 0),
+    [rawAsks]
   );
   const bidPct =
     bidTotal + askTotal > 0
