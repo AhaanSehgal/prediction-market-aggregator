@@ -128,6 +128,55 @@ The codebase follows strict dependency inversion. The dependency graph flows one
 
 ---
 
+## Post-Interview Updates
+
+After the initial submission and interview :
+
+### 1. Crossed Levels as Arbitrage Opportunities
+
+**Feedback:** Uncrossing the order book hides real arbitrage opportunities. The platform should surface these, not hide them.
+
+**Before:** The order book display filtered out any ask below the best bid (uncrossing), showing a clean but misleading book.
+
+**After:** Crossed levels are now displayed with visual ARB indicators:
+
+- Crossed ask rows are highlighted with yellow/amber background styling
+- A small `ARB` badge appears next to the price on crossed rows
+- Hovering a crossed row shows an **ArbTooltip** with: which venue has the cheap ask, the best bid price on the other venue, profit per share, and total available size
+- The spread row shows "Crossed" with yellow styling when the book is crossed, while still computing the tradeable spread from the first clean ask above the best bid
+
+Files changed: `OrderBookPanel.tsx` (ARB badge, ArbTooltip, crossed row styling), `SpreadRow.tsx` (crossed state display), `useOrderBookView.ts` (removed display uncrossing, kept tradeable spread calculation).
+
+### 2. Fee-Aware Smart Order Routing
+
+**Feedback:** The quote engine filled venues sequentially (Polymarket first, then Kalshi). It should route based on best effective price after fees.
+
+**Before:** The engine iterated merged price levels and filled venue contributions in array order. No fee consideration.
+
+**After:** The quote engine now:
+
+1. **Decomposes** merged levels into individual venue offers
+2. **Tags** each offer with its effective price inclusive of taker fees
+3. **Sorts** all offers by best effective price across both venues
+4. **Fills** greedily from cheapest effective price
+
+Fee models implemented:
+
+- **Polymarket:** 0% for politics markets (only crypto/NCAAB/Serie A charge fees)
+- **Kalshi:** Taker fee = `0.07 × P × (1 − P)` per contract, Maker fee = `0.0175 × P × (1 − P)` per contract
+
+The quote engine also now fills crossed (arbitrage) levels — if a Kalshi ask at 19¢ sits below the best Polymarket bid at 21¢, the engine fills that 19¢ ask first since it's real executable liquidity at a better price.
+
+The UI surfaces fee information throughout:
+
+- **Est. fees** and **Effective avg price** in quote details
+- **Per-venue fee** in the fill split breakdown
+- **Total (incl. fees)** in the payout summary
+- Profit percentage calculated against total spend including fees
+- Sell side shows net proceeds after fee deduction
+
+---
+
 ## Tech Stack
 
 - Next.js 16 (App Router) + React 19
