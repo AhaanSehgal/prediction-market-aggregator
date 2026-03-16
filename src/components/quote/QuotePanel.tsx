@@ -33,7 +33,8 @@ export function QuotePanel() {
   };
 
   const potentialPayout = quote ? (isBuy ? quote.totalShares : quote.totalCost) : 0;
-  const potentialProfit = quote ? (isBuy ? quote.totalShares - quote.totalCost : 0) : 0;
+  const totalSpend = quote ? quote.totalCost + quote.totalFees : 0;
+  const potentialProfit = quote ? (isBuy ? quote.totalShares - totalSpend : 0) : 0;
 
   const resolvesDate = new Date(stats.expiresAt).toLocaleDateString('en-US', {
     month: 'long',
@@ -217,6 +218,22 @@ function QuoteDetails({ quote, isBuy }: { quote: NonNullable<ReturnType<typeof u
           {(quote.averagePrice * 100).toFixed(2)}¢
         </span>
       </div>
+      {quote.totalFees > 0.001 && (
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] text-muted-light">Est. fees</span>
+          <span className="text-[13px] text-yellow-400 font-mono">
+            ${quote.totalFees.toFixed(2)}
+          </span>
+        </div>
+      )}
+      {quote.totalFees > 0.001 && (
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] text-muted-light">Effective avg</span>
+          <span className="text-[13px] text-muted-light font-mono">
+            {(quote.effectiveAveragePrice * 100).toFixed(2)}¢
+          </span>
+        </div>
+      )}
       {quote.priceImpact > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-[13px] text-muted-light">Price impact</span>
@@ -256,24 +273,28 @@ function FillSplit({ quote }: { quote: NonNullable<ReturnType<typeof useBookForQ
         ))}
       </div>
       {quote.venueSummaries.map((vs) => (
-        <div key={vs.venue} className="flex items-center justify-between py-0.5">
-          <div className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-[8px] h-[8px] rounded-sm"
-              style={{ background: VENUE_COLORS[vs.venue] }}
-            />
-            <span className="text-[12px] text-muted-light">{VENUE_LABELS[vs.venue]}</span>
-          </div>
-          <div className="flex items-center gap-3 text-[12px] font-mono">
-            <span className="text-foreground">
-              {vs.totalShares.toLocaleString('en-US', { maximumFractionDigits: 2 })} shares
+        <div key={vs.venue} className="py-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="inline-block w-[8px] h-[8px] rounded-sm"
+                style={{ background: VENUE_COLORS[vs.venue] }}
+              />
+              <span className="text-[12px] text-muted-light">{VENUE_LABELS[vs.venue]}</span>
+            </div>
+            <span className="text-[12px] text-foreground font-mono">
+              {vs.totalShares.toLocaleString('en-US', { maximumFractionDigits: 2 })} shares @{(vs.averagePrice * 100).toFixed(1)}¢
             </span>
-            <span className="text-muted">
+          </div>
+          <div className="flex items-center justify-between pl-[18px] mt-0.5">
+            <span className="text-[11px] text-muted font-mono">
               ${vs.totalCost.toFixed(2)}
             </span>
-            <span className="text-muted">
-              @{(vs.averagePrice * 100).toFixed(1)}¢
-            </span>
+            {vs.totalFees > 0.001 && (
+              <span className="text-[11px] text-yellow-400 font-mono">
+                +${vs.totalFees.toFixed(2)} fee
+              </span>
+            )}
           </div>
         </div>
       ))}
@@ -305,16 +326,16 @@ function PayoutSummary({
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-muted-light">Total</span>
+            <span className="text-[13px] text-muted-light">Total (incl. fees)</span>
             <span className="text-[13px] text-foreground font-mono">
-              {quote && quote.totalCost > 0 ? `$${quote.totalCost.toFixed(2)}` : '--'}
+              {quote && quote.totalCost > 0 ? `$${(quote.totalCost + quote.totalFees).toFixed(2)}` : '--'}
             </span>
           </div>
           {quote && potentialProfit > 0 && (
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-muted-light">Potential profit</span>
               <span className="text-[13px] text-bid font-mono font-medium">
-                +${potentialProfit.toFixed(2)} ({((potentialProfit / quote.totalCost) * 100).toFixed(0)}%)
+                +${potentialProfit.toFixed(2)} ({((potentialProfit / (quote.totalCost + quote.totalFees)) * 100).toFixed(0)}%)
               </span>
             </div>
           )}
@@ -324,9 +345,17 @@ function PayoutSummary({
           <div className="flex items-center justify-between">
             <span className="text-[13px] text-muted-light">You&apos;ll receive</span>
             <span className={`text-[13px] font-mono font-medium ${quote && quote.totalCost > 0 ? 'text-ask' : 'text-muted'}`}>
-              {quote && quote.totalCost > 0 ? `$${quote.totalCost.toFixed(2)}` : '--'}
+              {quote && quote.totalCost > 0 ? `$${(quote.totalCost - quote.totalFees).toFixed(2)}` : '--'}
             </span>
           </div>
+          {quote && quote.totalFees > 0.001 && (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-muted-light">Est. fees</span>
+              <span className="text-[13px] text-yellow-400 font-mono">
+                -${quote.totalFees.toFixed(2)}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-[13px] text-muted-light">Total shares</span>
             <span className="text-[13px] text-foreground font-mono">

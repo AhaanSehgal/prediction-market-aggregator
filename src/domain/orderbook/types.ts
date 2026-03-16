@@ -50,6 +50,8 @@ export interface FillAtLevel {
   price: Probability;
   size: Dollars;
   cost: Dollars;
+  fee: Dollars;
+  effectivePrice: Probability;
   venue: VenueId;
 }
 
@@ -57,7 +59,9 @@ export interface VenueFillSummary {
   venue: VenueId;
   totalShares: Dollars;
   totalCost: Dollars;
+  totalFees: Dollars;
   averagePrice: Probability;
+  effectiveAveragePrice: Probability;
 }
 
 export interface QuoteResult {
@@ -65,7 +69,9 @@ export interface QuoteResult {
   requestedAmount: Dollars;
   totalShares: Dollars;
   totalCost: Dollars;
+  totalFees: Dollars;
   averagePrice: Probability;
+  effectiveAveragePrice: Probability;
   fills: FillAtLevel[];
   venueSummaries: VenueFillSummary[];
   priceImpact: number;

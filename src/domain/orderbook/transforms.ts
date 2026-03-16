@@ -135,6 +135,31 @@ export function flipBook(book: MergedOrderBook): MergedOrderBook {
   };
 }
 
+export function flipBookRaw(book: MergedOrderBook): MergedOrderBook {
+  const flippedBids = flipLevels(book.asks).sort(
+    (a, b) => b.price - a.price
+  );
+  const flippedAsks = flipLevels(book.bids).sort(
+    (a, b) => a.price - b.price
+  );
+
+  const bestBid = flippedBids.length > 0 ? flippedBids[0].price : null;
+  const bestAsk = flippedAsks.length > 0 ? flippedAsks[0].price : null;
+
+  return {
+    bids: flippedBids,
+    asks: flippedAsks,
+    bestBid: bestBid !== null ? asProbability(bestBid) : null,
+    bestAsk: bestAsk !== null ? asProbability(bestAsk) : null,
+    spread:
+      bestBid !== null && bestAsk !== null ? bestAsk - bestBid : null,
+    midpoint:
+      bestBid !== null && bestAsk !== null
+        ? asProbability((bestAsk + bestBid) / 2)
+        : null,
+  };
+}
+
 export function cumulativeFromEnd(levels: MergedPriceLevel[]): number[] {
   const cum = new Array<number>(levels.length);
   let total = 0;
